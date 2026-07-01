@@ -1,0 +1,57 @@
+# Build outputs
+target/
+out/
+
+# Logs
+logs/
+*.log
+
+# IDE and editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Temporary folders
+tmp/
+temp/
+
+# Act local testing
+.github/.env.act
+
+# Application specific
+/.memory/
+
+# development directories
+.claude/
+/.idea/
+/.vscode/
+# Project-specific
+CLAUDE.md
+
+# Development
+*.orig
+.husky/
+.lefthook/
+.kilocode/
+
+# temp dir
+.changeset/prerelease.lock
+.secrets
+
+# wechat-ilink-bot runtime config & secrets under data/
+# These are auto-generated templates / per-deployment state that carry API keys and bot tokens.
+/data/models-config.json
+/data/farm_game.db*
+/data/claude-workspace/
+/data/tasks/

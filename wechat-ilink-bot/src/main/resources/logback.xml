@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+
+    <property name="LOG_DIR" value="${LOG_DIR:-logs}" />
+    <property name="FILE_PATTERN"
+              value="%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n" />
+
+    <!-- 控制台：开发可见 -->
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- 系统日志：按日期滚动落盘 -->
+    <appender name="SYSTEM_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_DIR}/system/system.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_DIR}/system/system.%d{yyyy-MM-dd}.log</fileNamePattern>
+            <maxHistory>30</maxHistory>
+        </rollingPolicy>
+        <encoder>
+            <pattern>${FILE_PATTERN}</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <!-- 微信收发：按 userId（MDC）分流 + 按日期滚动，落盘 logs/io/<userId>/io.<date>.log -->
+    <appender name="MSG_IO_SIFT" class="ch.qos.logback.classic.sift.SiftingAppender">
+        <discriminator>
+            <key>userId</key>
+            <defaultValue>unknown</defaultValue>
+        </discriminator>
+        <sift>
+            <appender name="MSG_IO-${userId}" class="ch.qos.logback.core.rolling.RollingFileAppender">
+                <file>${LOG_DIR}/io/${userId}/io.log</file>
+                <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+                    <fileNamePattern>${LOG_DIR}/io/${userId}/io.%d{yyyy-MM-dd}.log</fileNamePattern>
+                    <maxHistory>30</maxHistory>
+                </rollingPolicy>
+                <encoder>
+                    <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %msg%n</pattern>
+                    <charset>UTF-8</charset>
+                </encoder>
+            </appender>
+        </sift>
+    </appender>
+
+    <!-- Claude 桥接：生命周期 + 错误，按日期滚动落盘 -->
+    <appender name="CLAUDE_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_DIR}/claude/claude.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_DIR}/claude/claude.%d{yyyy-MM-dd}.log</fileNamePattern>
+            <maxHistory>30</maxHistory>
+        </rollingPolicy>
+        <encoder>
+            <pattern>${FILE_PATTERN}</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <!-- 收发审计 logger：仅落 per-user 文件，不进系统日志/控制台 -->
+    <logger name="MSG_IO" level="INFO" additivity="false">
+        <appender-ref ref="MSG_IO_SIFT" />
+    </logger>
+
+    <!-- Claude 桥接相关 logger：额外落独立文件（additivity 保留，仍进控制台/系统日志） -->
+    <logger name="com.github.wechat.ilink.bot.mode.claude" level="DEBUG">
+        <appender-ref ref="CLAUDE_FILE" />
+    </logger>
+    <logger name="com.github.wechat.ilink.bot.mode.ClaudeBridgeMode" level="DEBUG">
+        <appender-ref ref="CLAUDE_FILE" />
+    </logger>
+
+    <logger name="com.github.wechat.ilink.bot" level="DEBUG" />
+
+    <root level="INFO">
+        <appender-ref ref="STDOUT" />
+        <appender-ref ref="SYSTEM_FILE" />
+    </root>
+</configuration>

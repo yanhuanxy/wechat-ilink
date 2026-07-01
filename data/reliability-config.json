@@ -1,0 +1,10 @@
+{
+  "sendMaxAttempts" : 3,
+  "sendBackoffMs" : 500,
+  "rateLimitPerMin" : 30,
+  "rateLimitWindowMs" : 60000,
+  "flushDelayMs" : 0,
+  "flushIntervalMs" : 30000,
+  "mcpHealthIntervalMs" : 30000,
+  "mcpToolRefreshTicks" : 2
+}

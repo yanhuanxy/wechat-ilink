@@ -1,0 +1,18 @@
+{
+  "enabled": false,
+  "claudePath": "claude",
+  "workspaceRoot": "data/tasks",
+  "claudeHome": "data/claude-home",
+  "timeoutMs": 600000,
+  "permissionMode": "bypassPermissions",
+  "allowedTools": [],
+  "disallowedTools": [],
+  "streamingEnabled": true,
+  "maxVideoBytes": 52428800,
+  "bufferTtlMs": 60000,
+  "claudeBridgeEnabled": false,
+  "claudeBridgeCwd": "data/claude-workspace",
+  "claudeBridgeMaxHistorySessions": 50,
+  "claudeBridgeCompactThreshold": 10,
+  "claudeAdminUsers": []
+}

@@ -1,0 +1,38 @@
+{
+  "providers": {
+    "zhipu": {
+      "baseUrl": "https://open.bigmodel.cn/api/paas/v4",
+      "apiKey": "",
+      "uploadsUrl": ""
+    },
+    "dashscope": {
+      "baseUrl": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+      "apiKey": "",
+      "uploadsUrl": "https://dashscope.aliyuncs.com/api/v1/uploads"
+    },
+    "anthropic": {
+      "baseUrl": "https://dashscope.aliyuncs.com/apps/anthropic",
+      "apiKey": "",
+      "uploadsUrl": ""
+    }
+  },
+  "chat": {
+    "provider": "zhipu",
+    "type": "openai",
+    "model": "glm-4-flash",
+    "maxTokens": 5000,
+    "timeoutMs": 30000,
+    "maxHistory": 20,
+    "streamingEnabled": true,
+    "typingIntervalMs": 5000
+  },
+  "review": {
+    "provider": "dashscope",
+    "model": "qwen-vl-max"
+  },
+  "bridge": {
+    "provider": "anthropic",
+    "model": "qwen-max",
+    "smallModel": "qwen-turbo"
+  }
+}

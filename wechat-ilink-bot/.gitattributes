@@ -1,0 +1,20 @@
+# Normalize line endings across platforms: store LF in the repo, check out
+# native on Windows. Prevents CRLF noise in diffs from Windows contributors.
+* text=auto eol=lf
+
+# Shell scripts must stay LF even on Windows checkouts.
+*.sh text eol=lf
+
+# Windows batch files stay CRLF.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Treat these as binary (no EOL conversion, no diff).
+*.db binary
+*.sqlite binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.mp4 binary

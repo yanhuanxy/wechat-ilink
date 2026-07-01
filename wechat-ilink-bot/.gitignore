@@ -1,0 +1,35 @@
+# Build output
+target/
+out/
+
+# Logs
+*.log
+logs/
+
+# IDE / editor
+.idea/
+.vscode/
+*.iml
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+ehthumbs.db
+
+# ---------------------------------------------------------------------------
+# Runtime config & state (under data/)
+# These carry API keys / bot identifiers / per-user workspaces — NEVER commit.
+# The app auto-generates templates on first run; tracked *.example are the source.
+# ---------------------------------------------------------------------------
+/data/*.json
+!/data/*.example
+/data/farm_game.db*
+/data/claude-workspace/      # Claude Bridge per-user work dirs (runtime-generated)
+/data/claude-home/           # Derived by SkillInstaller from src/main/resources/skills/ — do not commit copies
+/data/tasks/                 # Review video-task work dirs
+
+# Misc local artifacts
+identifier.sqlite
