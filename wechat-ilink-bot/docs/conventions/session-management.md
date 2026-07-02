@@ -150,6 +150,7 @@ Claude Bridge 模式有两层会话状态，刻意分离：
 | 执行标志（`claudeApprovedExec`） | `PlayerSession` 的 transient 字段（内存） | 一次性；切会话/重启清除 | `/approve` 置位，下一条消息拼"执行上一轮计划"前缀后消费；不入库 |
 | 累计轮次（`claudeTurnCount`） | `PlayerSession` 的 transient 字段（内存） | 跟随活跃会话；切换会话归零 | 每条成功回复自增；达 `claudeBridgeCompactThreshold` 触发自动 `/compact` |
 | 会话元数据 | `claude_sessions` 表（`ClaudeSessionRepository`） | 持久化 | `session_id / user_id / cwd / model / title / created_at / updated_at` |
+| 消息去重水位线 | `processed_message` 表（`MessageDedupRepository`） | 持久化 | 每用户已处理最大 `message_id`；`GameBot.onMessages` 据此跳过重启 resume 重投的旧消息，避免旧问题被重跑 |
 
 `claude_sessions` 表结构（`DatabaseManager.executeSchema()` 中幂等建表）：
 

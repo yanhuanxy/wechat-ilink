@@ -16,6 +16,7 @@
 | G6 pending 超时项泄漏 | `McpClient.await/sendRequest` 清理 | `mcp/McpClient` |
 | G7 tool 不定期刷新 | `McpHealthMonitor` 周期 `registry.refresh` | `mcp/McpHealthMonitor` |
 | G8 持久化合并/兜底 | **FlushGate** + 锁下沉 | `session/` |
+| G9 重启 resume 重投旧消息、旧问题被重跑 | **MessageDedupRepository**（message_id 水位线） | `GameBot.onMessages` |
 
 ## RetrySender（G1）
 
@@ -42,6 +43,13 @@ per-user 固定窗口（`ConcurrentHashMap<userId, Window>`）：窗口内 `tryA
 - `FlushGate`：`scheduleFlush(userId)` —— `flushDelayMs<=0` 同步立即刷（默认，保持"命令返回即落盘"）；`>0` per-user debounce 合并。周期 `flushIntervalMs` 兜底刷所有 dirty；`flushAllNow()` shutdown 强制全量。
 - 调用方迁移：`GameEngine`/`SystemCommandMode` 的 `saveSession` → `scheduleFlush`（简单构造器 gate=null 时同步，等价旧行为；全量构造器启用周期兜底）。
 - **语义变化**：`flushDelayMs>0` 时命令返回不再保证已落盘，崩溃丢失 ≤ `flushIntervalMs`（可接受：单实例、内存态始终最新）。
+
+## 消息去重 / 重投幂等（G9）
+
+`BotInstance` 优雅关闭时把 SDK 的 `updatesCursor` 落库（`bot_session`），重启用 `resumeContext` 从该游标恢复拉取；游标边界会**重投最后一条已处理消息**。因 `currentMode` 持久化，重投的旧文本会再次路由（如 CLAUDE 模式再跑一次子进程 → 旧问题被重跑）。
+- **MessageDedupRepository**（`persistence/`）：按用户维度记录已处理的最大 `message_id`（表 `processed_message`，纯 JDBC + `ConcurrentHashMap` 内存缓存算 max）。
+  - `getLastMessageId(userId)`：无记录返回 `Long.MIN_VALUE`；`markProcessed(userId, id)`：仅当 `id > 水位线`时上移并 `INSERT OR REPLACE` 落库（取 max，不回退）。
+- 接线：`GameBot.onMessages` 每条消息处理前，`message_id ≤ 水位线` → 跳过（重投的旧消息）；处理后 `markProcessed`。离线期间真正的新消息（id 更大）仍放行。`message_id` 为 null 时不去重（无法判定，宁可放行）。构造器 `dedup=null` 时整体关闭（向后兼容）。
 
 ## 配置（`ReliabilityConfig`）
 

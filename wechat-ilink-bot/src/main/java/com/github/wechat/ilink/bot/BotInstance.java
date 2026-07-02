@@ -225,10 +225,11 @@ public class BotInstance {
 
         ClaudeSessionRepository claudeRepo = new ClaudeSessionRepository(dbManager);
         ClaudeModeBuild claudeBuild = buildClaudeMode(taskConfig, claudeRepo);
+        MessageDedupRepository dedupRepo = new MessageDedupRepository(dbManager);
 
         final GameBot bot = new GameBot(engine, renderer, llmProvider, chatHistory, sessionManager,
                 streamingEnabled, typingIntervalMs, llmQueue, taskHandler, claudeBuild.mode, claudeRepo,
-                mcpClient, mcpToolRegistry, reliability, claudeAdminUsers(taskConfig));
+                mcpClient, mcpToolRegistry, reliability, claudeAdminUsers(taskConfig), dedupRepo);
 
         ILinkConfig.Builder configBuilder = ILinkConfig.builder()
                 .connectTimeoutMs(35000)
@@ -314,10 +315,11 @@ public class BotInstance {
 
         ClaudeSessionRepository claudeRepo = new ClaudeSessionRepository(dbManager);
         ClaudeModeBuild claudeBuild = buildClaudeMode(taskConfig, claudeRepo);
+        MessageDedupRepository dedupRepo = new MessageDedupRepository(dbManager);
 
         final GameBot bot = new GameBot(engine, renderer, llmProvider, chatHistory, sessionManager,
                 streamingEnabled, typingIntervalMs, llmQueue, taskHandler, claudeBuild.mode, claudeRepo,
-                mcpClient, mcpToolRegistry, reliability, claudeAdminUsers(taskConfig));
+                mcpClient, mcpToolRegistry, reliability, claudeAdminUsers(taskConfig), dedupRepo);
 
         ILinkConfig clientConfig = ILinkConfig.builder()
                 .connectTimeoutMs(35000)

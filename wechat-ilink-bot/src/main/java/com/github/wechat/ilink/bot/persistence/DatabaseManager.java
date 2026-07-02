@@ -3,12 +3,12 @@ package com.github.wechat.ilink.bot.persistence;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.nio.file.Paths;
-import java.nio.file.Files;
 
 public class DatabaseManager {
 
@@ -99,6 +99,11 @@ public class DatabaseManager {
                     "bot_id TEXT," +
                     "base_url TEXT," +
                     "updates_cursor TEXT," +
+                    "updated_at INTEGER NOT NULL)");
+
+            stmt.execute("CREATE TABLE IF NOT EXISTS processed_message (" +
+                    "user_id TEXT PRIMARY KEY," +
+                    "last_message_id INTEGER NOT NULL," +
                     "updated_at INTEGER NOT NULL)");
 
             stmt.execute("CREATE INDEX IF NOT EXISTS idx_farm_plot_user ON farm_plot(user_id)");

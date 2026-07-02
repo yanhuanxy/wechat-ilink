@@ -12,6 +12,7 @@ import com.github.wechat.ilink.bot.mcp.McpToolRegistry;
 import com.github.wechat.ilink.bot.mode.*;
 import com.github.wechat.ilink.bot.mode.hook.*;
 import com.github.wechat.ilink.bot.persistence.ClaudeSessionRepository;
+import com.github.wechat.ilink.bot.persistence.MessageDedupRepository;
 import com.github.wechat.ilink.bot.session.SessionManager;
 import com.github.wechat.ilink.bot.task.TaskMessageHandler;
 import com.github.wechat.ilink.bot.util.AppPaths;
@@ -35,6 +36,8 @@ public class GameBot implements OnMessageListener, ModeSender, MediaDownloader {
     private final GameEngine engine;
     private final ResponseRenderer renderer;
     private final HookRegistry hooks;
+    // 消息去重水位线（重启后 SDK resume 重投旧消息时据此跳过，避免旧问题被重跑）；为 null 时不去重。
+    private final MessageDedupRepository dedup;
 
     public GameBot(GameEngine engine, ResponseRenderer renderer,
                    LlmProvider llmProvider, ChatHistoryManager chatHistory,
@@ -62,7 +65,7 @@ public class GameBot implements OnMessageListener, ModeSender, MediaDownloader {
         this(engine, renderer, llmProvider, chatHistory, sessions,
                 streamingEnabled, typingIntervalMs, llmQueue, taskHandler,
                 claudeMode, claudeSessionRepo, null, null, new ReliabilityConfig(),
-                Collections.<String>emptySet());
+                Collections.<String>emptySet(), null);
     }
 
     public GameBot(GameEngine engine, ResponseRenderer renderer,
@@ -72,9 +75,11 @@ public class GameBot implements OnMessageListener, ModeSender, MediaDownloader {
                    TaskMessageHandler taskHandler, ClaudeBridgeMode claudeMode,
                    ClaudeSessionRepository claudeSessionRepo,
                    McpClient mcpClient, McpToolRegistry mcpToolRegistry,
-                   ReliabilityConfig reliability, Set<String> claudeAdminUsers) {
+                   ReliabilityConfig reliability, Set<String> claudeAdminUsers,
+                   MessageDedupRepository dedup) {
         this.engine = engine;
         this.renderer = renderer;
+        this.dedup = dedup;
         HookConfig hookConfig = HookConfig.load(AppPaths.data("hooks-config.json"));
         HookRegistry hookRegistry = new HookRegistry();
         if (hookConfig.isAudit()) {
@@ -204,6 +209,12 @@ public class GameBot implements OnMessageListener, ModeSender, MediaDownloader {
     public void onMessages(List<WeixinMessage> messages) {
         for (WeixinMessage msg : messages) {
             String userId = msg.getFrom_user_id();
+            Long messageId = msg.getMessage_id();
+            if (dedup != null && userId != null && messageId != null
+                    && messageId <= dedup.getLastMessageId(userId)) {
+                log.info("跳过重复投递消息, userId={}, messageId={}", userId, messageId);
+                continue;
+            }
             long turnStart = System.currentTimeMillis();
             try {
                 ModeOutcome outcome = router.route(msg);
@@ -225,6 +236,9 @@ public class GameBot implements OnMessageListener, ModeSender, MediaDownloader {
                     } catch (Exception ignored) {
                     }
                 }
+            }
+            if (dedup != null && userId != null && messageId != null) {
+                dedup.markProcessed(userId, messageId);
             }
             if (hooks.has(HookEvent.ON_TURN_COMPLETE)) {
                 hooks.fire(HookEvent.ON_TURN_COMPLETE,

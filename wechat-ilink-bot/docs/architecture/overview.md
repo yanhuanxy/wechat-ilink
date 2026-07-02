@@ -86,14 +86,15 @@ com.github.wechat.ilink.bot/
 │   └── FlushGate.java            # 持久化 debounce 合并 + 周期兜底（可靠性）
 │
 ├── persistence/                  # 框架层 - 持久化（SQLite）
-│   ├── DatabaseManager.java      # 连接/建表/WAL/schema 迁移（bot_mode 列、bot_session 表）
+│   ├── DatabaseManager.java      # 连接/建表/WAL/schema 迁移（bot_mode 列、bot_session/processed_message 表）
 │   ├── PlayerRepository.java     # 玩家 CRUD（含 bot_mode）
 │   ├── FarmPlotRepository.java   # 地块 CRUD
 │   ├── InventoryRepository.java  # 背包 CRUD
 │   ├── ActionRankRepository.java # 排行榜 CRUD
 │   ├── ClaudeSessionRepository.java # Claude 会话元数据 CRUD（claude_sessions 表）
 │   ├── BotSessionRepository.java # bot 登录会话 CRUD（bot_session 表，免扫码恢复）
-│   └── BotSessionRecord.java     # bot 会话记录 POJO（纯字符串，零 SDK 依赖）
+│   ├── BotSessionRecord.java     # bot 会话记录 POJO（纯字符串，零 SDK 依赖）
+│   └── MessageDedupRepository.java # 消息去重水位线（processed_message 表，重启 resume 重投幂等）
 │
 ├── llm/                          # 框架层 - LLM 对话
 │   ├── ModelsConfig.java         # 统一模型/Provider 注册表（providers 共享 + chat/review/bridge 各引用 provider+model）
