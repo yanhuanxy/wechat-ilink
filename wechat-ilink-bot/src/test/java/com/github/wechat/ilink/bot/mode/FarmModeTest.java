@@ -64,11 +64,11 @@ class FarmModeTest {
     }
 
     @Test
-    void handleText_hashOnly_handledWithoutSend() {
+    void handleText_hashOnly_sendsHint() throws Exception {
         PlayerSession session = new PlayerSession("user1");
         ModeOutcome outcome = farmMode.handleText(ctx, session, "#");
         assertTrue(outcome.isHandled());
-        verifyNoInteractions(sender);
+        verify(sender).sendText(eq("user1"), contains("帮助"));
     }
 
     @Test

@@ -32,10 +32,14 @@ public class BuySeedCommand implements Command {
                 try {
                     wantCount = Integer.parseInt(countPart.substring(1));
                 } catch (NumberFormatException e) {
-                    return CommandResult.error("数量格式错误，正确格式：x3");
+                    return CommandResult.error("数量格式错误，正确格式：x3 或 3");
                 }
             } else {
-                cropName = rawArg;
+                try {
+                    wantCount = Integer.parseInt(countPart);
+                } catch (NumberFormatException e) {
+                    cropName = rawArg;
+                }
             }
         } else {
             cropName = rawArg;
@@ -72,6 +76,7 @@ public class BuySeedCommand implements Command {
         int totalCost = unitPrice * bought;
         session.spendGold(totalCost);
         session.getInventory().addSeed(crop.getKey(), bought);
+        session.setLastCropKey(crop.getKey());
 
         StringBuilder sb = new StringBuilder();
         sb.append("🛒 购买成功！\n");

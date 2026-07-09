@@ -113,7 +113,7 @@ public interface ModeSender {
 4. 当前模式 == CLAUDE 且消息含 image/file_item → handleClaudeFileIntake（下载 + BridgeFileBuffer）  [Phase 4]
 5. extractText(msg) 为空 → SKIP
    ↳ 非空则 MessageAuditLog.inbound(userId, text)（入向审计落 logs/io/<userId>/，见 logging.md）
-6. text 以 "#" 开头 → FarmMode.handleText（剥离 #）
+6. text 以 "#" 开头（全角 `＃` 已归一为半角）→ FarmMode.handleText（剥离 #）
 7. text 以 "/" 开头 → SystemCommandMode.handleText
 8. text 以 "!" 开头（且 autogameMode != null）→ AutogameMode.handleText（! → MCP）  [autogame]
 9. ReviewMode.handlePendingPrompt（60s 内有视频票据） → peek 命中（不消费，窗口内可多次命中，票据靠 60s TTL 回收）

@@ -20,13 +20,14 @@ public class PlantAllCommand implements Command {
 
     @Override
     public CommandResult execute(PlayerSession session, String[] args) {
-        if (args.length == 0 || args[0].isEmpty()) {
-            return CommandResult.error("请指定作物名称，如：一键种植 小麦");
+        String cropName = (args.length > 0 && !args[0].isEmpty()) ? args[0] : session.getLastCropKey();
+        if (cropName == null) {
+            return CommandResult.error("请指定作物名称，如：#种植 小麦");
         }
 
-        Crop crop = CropRegistry.getByName(args[0]);
+        Crop crop = CropRegistry.getByName(cropName);
         if (crop == null) {
-            return CommandResult.error("未知作物: " + args[0]);
+            return CommandResult.error("未知作物: " + cropName);
         }
 
         List<FarmPlot> activePlots = session.getActivePlots();
@@ -45,6 +46,7 @@ public class PlantAllCommand implements Command {
             return CommandResult.error("没有空地或没有足够的" + crop.getName() + "种子");
         }
 
+        session.setLastCropKey(crop.getKey());
         return CommandResult.success("🌱 种植完成！在 " + planted + " 块地种上了" + crop.getName());
     }
 }

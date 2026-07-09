@@ -36,6 +36,10 @@ public class PlayerSession {
     // transient：不入库，重启回零；切换会话（/new、/resume、新会话）时归零。
     private transient int claudeTurnCount;
 
+    // 最近一次购买/种植的作物 key：#种植 / #施肥 无参时复用，省去重复输入作物名。
+    // transient：不入库，重启清空（先验证价值，确认有用再持久化到 player 表）。
+    private transient String lastCropKey;
+
     public PlayerSession(String userId) {
         this.userId = userId;
         this.gold = 500;
@@ -238,6 +242,14 @@ public class PlayerSession {
 
     public void resetClaudeTurnCount() {
         this.claudeTurnCount = 0;
+    }
+
+    public String getLastCropKey() {
+        return lastCropKey;
+    }
+
+    public void setLastCropKey(String lastCropKey) {
+        this.lastCropKey = lastCropKey;
     }
 
     public boolean spendGold(int amount) {

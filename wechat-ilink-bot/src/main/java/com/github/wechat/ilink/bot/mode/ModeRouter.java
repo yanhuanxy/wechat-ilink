@@ -96,6 +96,11 @@ public class ModeRouter {
             return ModeOutcome.skip();
         }
 
+        // 全角＃(U+FF03)归一化为半角#：中文输入法常误输全角符号，否则农场入口失效、消息落到聊天
+        if (text.charAt(0) == '＃') {
+            text = '#' + text.substring(1);
+        }
+
         if (ctx.hooks().has(HookEvent.ON_TEXT_RECEIVED)) {
             ctx.hooks().fire(HookEvent.ON_TEXT_RECEIVED,
                     HookContext.builder().userId(userId).text(text).session(session).build());

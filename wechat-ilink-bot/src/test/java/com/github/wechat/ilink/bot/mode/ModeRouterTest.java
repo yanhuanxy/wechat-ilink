@@ -292,13 +292,23 @@ class ModeRouterTest {
     }
 
     @Test
-    void route_hashOnly_handledWithoutSend() {
+    void route_hashOnly_sendsHint() throws Exception {
         WeixinMessage msg = textMessage("user1", "#");
 
         ModeOutcome outcome = router.route(msg);
 
         assertTrue(outcome.isHandled());
-        verifyNoInteractions(sender);
+        verify(sender).sendText(eq("user1"), contains("帮助"));
+    }
+
+    @Test
+    void route_fullWidthHash_delegatesToFarmMode() throws Exception {
+        WeixinMessage msg = textMessage("user1", "＃帮助");
+
+        ModeOutcome outcome = router.route(msg);
+
+        assertTrue(outcome.isHandled());
+        verify(sender).sendText(eq("user1"), contains("帮帮农场"));
     }
 
     @Test

@@ -48,9 +48,9 @@
   - [x] `TaskConfig` 增 `claudeBridge*` 字段；`/mode claude` 真切换 + `/new`、`/sessions`、`/resume`
   - [x] `ModeContext`（claudeSessionRepo）/ `ModeRouter`（claudeMode）/ `GameBot` / `BotInstance` / `GameApplication` 装配
   - [x] 测试：`ClaudeSessionRepositoryTest`、`ClaudeCodeAdapterTest`(10)、`ClaudeBridgeModeTest`(5)、`SystemCommandModeTest`(10) + 既有 mode 测试更新
-  - [ ] Live 端到端待 DashScope 充值后自测（spike 阶段命中 403 free quota exhausted）
+  - [ ] Live 端到端：配置已切智谱 GLM（glm-5.2）；LiveTest 已可移植化（env/AppPaths/向上查找，不再硬编码本机路径）、子进程链路已验真（init/模型/鉴权均 OK，curl 直探智谱端点 200）；完整回复当前受智谱网关 529 overloaded 瞬态阻塞（provider 侧、非代码缺陷），待其恢复后复跑 `CLAUDE_BRIDGE_LIVE=true mvn test -Dtest=ClaudeCodeAdapterLiveTest`
 - [x] Phase 3：工具审批（静态策略白名单）—— `TaskConfig.allowedTools` / `disallowedTools` + `permissionMode`
-  经 `ClaudeCodeProvider.appendToolPolicy` 落到 `--allowedTools` / `--disallowedTools`，Review/Bridge 共用；opt-in 不破坏现有行为
+  Bridge 经 `ClaudeCodeAdapter.appendBridgePolicy` 落到 `--allowedTools` / `--disallowedTools`（Review 走 DashScopeVideoProvider 直连、不经工具策略）；opt-in 不破坏现有行为
   - 评估结论：headless 模式无文档化的逐次工具审批协议（`--permission-prompt-tool` 无规范、stream-json 控制协议为内部接口），
     叠加 DashScope 403 无法 live 验证 → 采用文档化稳定的静态策略路线
   - 逐次交互审批（持久子进程 + ApprovalBuffer + ModeRouter 拦截 y/n）延后为 Phase 3.2，待 DashScope 充值后 spike

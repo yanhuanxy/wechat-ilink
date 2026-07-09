@@ -186,11 +186,11 @@ class GameBotTest {
     }
 
     @Test
-    void onMessages_hashOnly_skips() throws Exception {
+    void onMessages_hashOnly_sendsHint() throws Exception {
         WeixinMessage msg = createTextMessage("user1", "#");
         bot.onMessages(list(msg));
 
-        verify(client, never()).sendText(anyString(), anyString());
+        verify(client).sendText(eq("user1"), contains("帮助"));
     }
 
     @Test

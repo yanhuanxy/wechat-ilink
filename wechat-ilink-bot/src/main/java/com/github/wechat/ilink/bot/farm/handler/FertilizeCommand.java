@@ -20,7 +20,8 @@ public class FertilizeCommand implements Command {
 
     @Override
     public CommandResult execute(PlayerSession session, String[] args) {
-        if (args.length == 0 || args[0].isEmpty()) {
+        String cropName = (args.length > 0 && !args[0].isEmpty()) ? args[0] : session.getLastCropKey();
+        if (cropName == null) {
             return CommandResult.error("请指定作物类型，如：#施肥 小麦");
         }
 
@@ -28,9 +29,9 @@ public class FertilizeCommand implements Command {
             return CommandResult.error("没有肥料道具，可通过签到或点券商店获取");
         }
 
-        Crop crop = CropRegistry.getByName(args[0]);
+        Crop crop = CropRegistry.getByName(cropName);
         if (crop == null) {
-            return CommandResult.error("未知作物: " + args[0]);
+            return CommandResult.error("未知作物: " + cropName);
         }
 
         List<FarmPlot> activePlots = session.getActivePlots();
@@ -50,6 +51,7 @@ public class FertilizeCommand implements Command {
             return CommandResult.error("没有种植" + crop.getName() + "的地块");
         }
 
+        session.setLastCropKey(crop.getKey());
         return CommandResult.success("🧪 施肥成功！加速了 " + fertilized + " 块" + crop.getName() + "的生长");
     }
 }

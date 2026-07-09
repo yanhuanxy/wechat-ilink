@@ -74,4 +74,24 @@ class CommandParserTest {
         ParsedCommand result = parser.parse("  签到  ");
         assertEquals("CHECKIN", result.getName());
     }
+
+    @Test
+    void parse_trailingPunctuation_stripped() {
+        ParsedCommand result = parser.parse("签到。");
+        assertEquals("CHECKIN", result.getName());
+    }
+
+    @Test
+    void parse_fullWidthSpace_normalized() {
+        ParsedCommand result = parser.parse("种植　小麦");
+        assertEquals("PLANT_ALL", result.getName());
+        assertEquals("小麦", result.getArgs()[0]);
+    }
+
+    @Test
+    void parse_trailingPunctuationInArg_stripped() {
+        ParsedCommand result = parser.parse("购买 小麦。");
+        assertEquals("BUY_SEED", result.getName());
+        assertEquals("小麦", result.getArgs()[0]);
+    }
 }

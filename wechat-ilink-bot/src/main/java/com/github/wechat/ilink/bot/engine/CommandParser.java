@@ -16,7 +16,7 @@ public class CommandParser {
             return new ParsedCommand("UNKNOWN", new String[0]);
         }
 
-        String trimmed = rawText.trim();
+        String trimmed = normalize(rawText);
 
         String commandName = registry.resolveAlias(trimmed);
         if (commandName != null) {
@@ -34,5 +34,17 @@ public class CommandParser {
         }
 
         return new ParsedCommand("UNKNOWN", new String[]{trimmed});
+    }
+
+    private static final String TRAILING_PUNCT = "。！？，、；：";
+
+    /** 预处理：全角空格归一、去首尾空白、剥尾随中文标点（仅作用于命令体，不进参数中间）。 */
+    private static String normalize(String rawText) {
+        String s = rawText.replace('　', ' ').trim();
+        int end = s.length();
+        while (end > 0 && TRAILING_PUNCT.indexOf(s.charAt(end - 1)) >= 0) {
+            end--;
+        }
+        return end == s.length() ? s : s.substring(0, end);
     }
 }

@@ -9,6 +9,8 @@ import com.github.wechat.ilink.bot.session.SessionManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.List;
+
 public class GameEngine {
 
     private static final Logger log = LoggerFactory.getLogger(GameEngine.class);
@@ -39,7 +41,7 @@ public class GameEngine {
 
             Command command = registry.find(parsed.getName());
             if (command == null) {
-                return CommandResult.error("未知命令，输入'帮助'查看可用命令");
+                return unknownCommandResult(rawText);
             }
 
             CommandResult result = command.execute(session, parsed.getArgs());
@@ -56,5 +58,19 @@ public class GameEngine {
             log.debug("dispatch completed, userId={}, text={}, cost={}ms",
                     userId, rawText, System.currentTimeMillis() - start);
         }
+    }
+
+    /** 未知命令时，基于首个词做近似匹配，给"你是不是想输入 X"提示；无近似则回通用文案。 */
+    private CommandResult unknownCommandResult(String rawText) {
+        String firstToken = rawText.trim();
+        int sp = firstToken.indexOf(' ');
+        if (sp > 0) {
+            firstToken = firstToken.substring(0, sp);
+        }
+        List<String> suggestions = registry.findSimilar(firstToken);
+        if (suggestions.isEmpty()) {
+            return CommandResult.error("未知命令，输入'帮助'查看可用命令");
+        }
+        return CommandResult.error("未知命令，你是不是想输入：" + String.join(" / ", suggestions) + "？输入'帮助'查看全部");
     }
 }

@@ -118,6 +118,19 @@ class ModelTest {
     }
 
     @Test
+    void cropRegistry_getByName_alias_resolvesCrop() {
+        assertEquals("wheat", CropRegistry.getByName("麦").getKey());
+        assertEquals("carrot", CropRegistry.getByName("萝卜").getKey());
+        assertEquals("tomato", CropRegistry.getByName("西红柿").getKey());
+        assertEquals("watermelon", CropRegistry.getByName("瓜").getKey());
+    }
+
+    @Test
+    void cropRegistry_getByName_unknownAlias_returnsNull() {
+        assertNull(CropRegistry.getByName("不存在的作物"));
+    }
+
+    @Test
     void weather_today_returnsWeather() {
         Weather w = Weather.today();
         assertNotNull(w);

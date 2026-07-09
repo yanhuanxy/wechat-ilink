@@ -23,7 +23,7 @@ public class HelpCommand implements Command {
         sb.append("🌴✨#种植 小麦  #收获✨🌴\n");
         sb.append("🌴✨#卖菜      #锄地✨🌴\n");
         sb.append("🌴✨#浇水      #除虫✨🌴\n");
-        sb.append("🌴✨#施肥 小麦  #偷菜✨🌴\n");
+        sb.append("🌴✨#施肥 小麦  偷菜(开发中)✨🌴\n");
         sb.append("🌴✨#点券商店  #施肥 小麦✨🌴\n");
         sb.append("🌴✨#驱虫排行  #除草排行✨🌴\n");
         sb.append("🌴✨#浇水排行  #帮助✨🌴\n");

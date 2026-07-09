@@ -4,6 +4,8 @@ import com.github.wechat.ilink.bot.session.PlayerSession;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 class CommandRegistryTest {
@@ -51,6 +53,28 @@ class CommandRegistryTest {
         registry.register(new StubCommand("A"));
         registry.register(new StubCommand("B"));
         assertEquals(2, registry.allCommands().size());
+    }
+
+    @Test
+    void findSimilar_typo_returnsClosestAlias() {
+        registry.register(new StubCommand("CHECKIN"));
+        registry.registerAlias("签到", "CHECKIN");
+        List<String> similar = registry.findSimilar("签诛");
+        assertFalse(similar.isEmpty());
+        assertTrue(similar.contains("签到"));
+    }
+
+    @Test
+    void findSimilar_noMatch_returnsEmpty() {
+        registry.register(new StubCommand("CHECKIN"));
+        registry.registerAlias("签到", "CHECKIN");
+        assertTrue(registry.findSimilar("完全无关的xyz").isEmpty());
+    }
+
+    @Test
+    void findSimilar_emptyInput_returnsEmpty() {
+        assertTrue(registry.findSimilar("").isEmpty());
+        assertTrue(registry.findSimilar(null).isEmpty());
     }
 
     private static class StubCommand implements Command {

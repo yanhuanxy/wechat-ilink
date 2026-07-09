@@ -260,6 +260,15 @@ class FarmCommandTest {
     }
 
     @Test
+    void buySeed_bareNumber_buysMultiple() {
+        BuySeedCommand cmd = new BuySeedCommand();
+        CommandResult result = cmd.execute(session, new String[]{"wheat 3"});
+        assertTrue(result.isSuccess());
+        assertEquals(3, session.getInventory().getSeedCount("wheat"));
+        assertEquals(470, session.getGold());
+    }
+
+    @Test
     void buySeed_unknownCrop_returnsError() {
         BuySeedCommand cmd = new BuySeedCommand();
         CommandResult result = cmd.execute(session, new String[]{"不存在"});
@@ -301,5 +310,39 @@ class FarmCommandTest {
         CommandResult result = cmd.execute(session, new String[]{"wheat xabc"});
         assertFalse(result.isSuccess());
         assertTrue(result.getMessage().contains("数量格式错误"));
+    }
+
+    @Test
+    void plantAll_noArg_usesLastCropAfterBuy() {
+        new BuySeedCommand().execute(session, new String[]{"wheat"});
+        PlantAllCommand cmd = new PlantAllCommand();
+        CommandResult result = cmd.execute(session, new String[0]);
+        assertTrue(result.isSuccess());
+        assertTrue(result.getMessage().contains("种植完成"));
+    }
+
+    @Test
+    void plantAll_noArgNoContext_returnsError() {
+        PlantAllCommand cmd = new PlantAllCommand();
+        CommandResult result = cmd.execute(session, new String[0]);
+        assertFalse(result.isSuccess());
+    }
+
+    @Test
+    void fertilize_noArg_usesLastCropAfterBuy() {
+        new BuySeedCommand().execute(session, new String[]{"wheat"});
+        session.getInventory().addTool("fertilizer", 1);
+        session.getPlots().get(0).plant("wheat");
+        FertilizeCommand cmd = new FertilizeCommand();
+        CommandResult result = cmd.execute(session, new String[0]);
+        assertTrue(result.isSuccess());
+    }
+
+    @Test
+    void buySeed_bareAlias_buysByAbbreviation() {
+        BuySeedCommand cmd = new BuySeedCommand();
+        CommandResult result = cmd.execute(session, new String[]{"麦"});
+        assertTrue(result.isSuccess());
+        assertEquals(1, session.getInventory().getSeedCount("wheat"));
     }
 }

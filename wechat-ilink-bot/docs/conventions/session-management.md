@@ -90,6 +90,7 @@ public class PlayerSession {
     private transient boolean claudePlanMode;        // /plan 计划档标志，与 claudePrivileged 互斥，重启回收
     private transient boolean claudeApprovedExec;    // /approve 一次性执行标志，下一条消息消费；切会话/重启清除
     private transient int claudeTurnCount;           // 活跃会话累计轮次，达阈值触发自动 /compact
+    private transient String lastCropKey;            // 最近作物 key，#种植/#施肥 无参复用，内存态重启清空
     private long lastActivity;
     private boolean dirty;
 

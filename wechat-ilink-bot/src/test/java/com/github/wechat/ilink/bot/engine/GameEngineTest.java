@@ -108,4 +108,12 @@ class GameEngineTest {
         assertNotNull(sessionManager.getOrCreate("userA"));
         assertNotNull(sessionManager.getOrCreate("userB"));
     }
+
+    @Test
+    void dispatch_unknownCloseTypo_returnsSuggestion() {
+        CommandResult result = engine.dispatch("user1", "测试x");
+        assertFalse(result.isSuccess());
+        assertTrue(result.getMessage().contains("你是不是想输入"));
+        assertTrue(result.getMessage().contains("测试"));
+    }
 }

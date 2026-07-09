@@ -21,6 +21,10 @@ public class FarmMode implements BotMode {
         String userId = session.getUserId();
         String commandText = text.substring(1).trim();
         if (commandText.isEmpty()) {
+            try {
+                ctx.sender().sendText(userId, "输入『帮助』查看可用命令");
+            } catch (Exception ignored) {
+            }
             return ModeOutcome.handled();
         }
 
