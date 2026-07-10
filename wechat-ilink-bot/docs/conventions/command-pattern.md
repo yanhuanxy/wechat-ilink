@@ -50,7 +50,7 @@ public class FarmGame {
         registry.register(new UserInfoCommand());
         registry.register(new ViewFarmCommand());
         registry.register(new HelpCommand());
-        // ... 共 22 个命令
+        // ... 共 27 个命令
 
         // 注册中文别名
         registry.registerAlias("我的信息", "USER_INFO");

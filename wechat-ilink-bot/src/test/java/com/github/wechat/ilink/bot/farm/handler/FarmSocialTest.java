@@ -121,6 +121,31 @@ class FarmSocialTest {
     }
 
     @Test
+    void pestRank_rendersBoard() {
+        rankRepo.incrementScore("PEST", "farmer1", 88);
+        CommandResult result = new PestRankCommand(rankRepo, playerRepo).execute(session, new String[0]);
+        assertTrue(result.isSuccess());
+        assertTrue(result.getMessage().contains("88"));
+    }
+
+    @Test
+    void weedRank_rendersBoard() {
+        rankRepo.incrementScore("WEED", "farmer2", 77);
+        CommandResult result = new WeedRankCommand(rankRepo, playerRepo).execute(session, new String[0]);
+        assertTrue(result.getMessage().contains("77"));
+    }
+
+    @Test
+    void levelRank_ordersByLevel() {
+        PlayerSession pro = new PlayerSession("pro");
+        pro.setLevel(20);
+        playerRepo.insert(pro);
+        CommandResult result = new LevelRankCommand(playerRepo).execute(session, new String[0]);
+        assertTrue(result.isSuccess());
+        assertTrue(result.getMessage().contains("20"));
+    }
+
+    @Test
     void harvestAll_stolenPlot_yieldsLessAndReports() {
         FarmPlot plot = session.getPlots().get(0);
         plot.plant("wheat");

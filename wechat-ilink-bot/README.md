@@ -13,7 +13,7 @@
 | 触发 | 模式 | 做什么 |
 |------|------|--------|
 | 普通文本（默认） | **Chat** | LLM 对话（流式/同步，OpenAI 兼容）；未配 LLM 时原样回显 |
-| `#` 前缀 | **Farm** | 帮帮农场文字游戏（22 个命令：种植/收获/卖菜/签到/排行…） |
+| `#` 前缀 | **Farm** | 帮帮农场文字游戏（27 个命令：种植/收获/卖菜/签到/偷菜/排行/改名…） |
 | `/mode claude` 后的普通文本 | **Claude Bridge** | 走本机 `claude` CLI 子进程，跨消息会话延续（`--resume`）+ 双向文件回传 |
 | 上传视频（抢占式） | **Review** | 视频点评任务（Claude Code / DashScope 视频模型） |
 | `!` 前缀 | **Autogame** | 经 MCP 调用外部 autogame 服务，图像识别 + 自动操作小程序游戏 |
@@ -57,7 +57,7 @@ Application        GameApplication（组合根）· GameBot（SDK 桥 + ModeSend
 Framework          mode/（ModeRouter + Chat/Farm/ClaudeBridge/Review/System/Autogame + RetrySender/RateLimiter + claude/）
                    engine/ · command/ · session/（+FlushGate）· persistence/ · llm/ · task/ · mcp/ · config/（ReliabilityConfig）
     ↓
-Implementation     farm/（帮帮农场：22 命令处理器 + 领域模型）
+Implementation     farm/（帮帮农场：27 命令处理器 + 领域模型）
 ```
 
 依赖严格向下：Application → Framework → Implementation。`mode/` 包零 SDK import（统一经 `ModeSender` 回调到 `GameBot`）。详见 [docs/architecture/](docs/architecture/overview.md)。

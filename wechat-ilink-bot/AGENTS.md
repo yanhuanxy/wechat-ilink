@@ -24,7 +24,7 @@
 | 触发 | 模式 | BotModeType | 做什么 |
 |------|------|-------------|--------|
 | 普通文本（默认） | Chat | `CHAT` | LLM 对话（流式/同步）；未配 LLM 原样回显 |
-| `#` 前缀 | Farm | `FARM` | 帮帮农场（22 命令，经 GameEngine） |
+| `#` 前缀 | Farm | `FARM` | 帮帮农场（27 命令，经 GameEngine） |
 | `/mode claude` 后文本 / CLAUDE 媒体 | Claude Bridge | `CLAUDE` | `claude` 子进程（`--resume`）+ 双向文件回传 |
 | 上传视频（抢占式） | Review | `REVIEW` | 视频评测（Claude Code / DashScope） |
 | `!` 前缀 | Autogame | `AUTOGAME` | MCP 调 autogame-xcx |
@@ -98,7 +98,7 @@ com.github.wechat.ilink.bot/
 │
 └── farm/                         # 实现层 - 帮帮农场
     ├── FarmGame.java             # 游戏入口（注册命令）
-    ├── handler/                  # 22 个命令处理器
+    ├── handler/                  # 27 个命令处理器
     └── model/                    # 领域模型（Crop/CropRegistry/CropStage/FarmPlot/Inventory/Weather）
 ```
 

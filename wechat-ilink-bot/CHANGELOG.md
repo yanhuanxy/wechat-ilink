@@ -5,6 +5,17 @@
 
 ## [Unreleased]
 
+### Added（能力，开源版本所含）
+- **农场社交**：偷菜（全服随机池、两步交互、被偷补偿）、6 类榜单（财富 / 等级 / 偷菜 / 除虫 / 除草 / 浇水）、昵称系统；新增 5 个命令（共 27 命令）。设计见 [docs/design/farm-social.md](docs/design/farm-social.md)。
+- **Claude Bridge 模式**：本机 `claude` CLI 子进程 + `--resume` 跨消息会话 + 双向文件回传 + 二元制权限（`/sudo` 提权）。
+- **Review 模式**：视频点评任务（Claude Code / DashScope 视频模型）。
+- **Autogame 模式 + MCP 客户端**：`!` 前缀经 JSON-RPC over HTTP+SSE 驱动 [wechat-link-autogame-xcx](../wechat-link-autogame-xcx)。
+- **可靠性层**：`RetrySender` / `RateLimiter` / `McpHealthMonitor` / `FlushGate` + 锁下沉 + 8 旋钮 `ReliabilityConfig`。设计见 [docs/design/reliability.md](docs/design/reliability.md)。
+- **Hooks 子系统**：运行时生命周期 hook（H1–H4）+ 开发期 Claude Code 守卫。设计见 [docs/design/hooks.md](docs/design/hooks.md)。
+- **模型 / Provider 配置收敛**：`data/models-config.json` 统一注册 providers + chat/review/bridge 引用。
+- **结构化日志**：系统日志 + per-user 收发审计（SiftingAppender）+ Claude 桥接日志。
+- **多账号 + 会话复用**：`data/bots.json` 多 `BotInstance` + 登录游标持久化免重扫。
+
 ### Added（开源准备）
 - `LICENSE`（MIT）。
 - 面向小白的快速上手与「各模式前置条件表」（见 README）。

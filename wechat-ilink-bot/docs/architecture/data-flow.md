@@ -179,7 +179,7 @@ new FarmGame(registry, rankRepo).registerCommands()
     ├── registry.register(new UserInfoCommand())
     ├── registry.register(new ViewFarmCommand())
     ├── registry.register(new HelpCommand())
-    ├── ...（共 22 个命令）
+    ├── ...（共 27 个命令）
     │
     ├── registry.registerAlias("我的信息", "USER_INFO")
     ├── registry.registerAlias("签到", "CHECKIN")

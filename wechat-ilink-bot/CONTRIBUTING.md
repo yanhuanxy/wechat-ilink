@@ -21,7 +21,7 @@ mvn clean test          # 跑全部单元测试（覆盖率报告见 target/site
 mvn clean package       # 打可运行 fat jar
 ```
 
-- 新功能必须带 JUnit 5 测试，整体覆盖率 ≥ 80%。
+- 新功能必须带 JUnit 5 测试，整体覆盖率目标 ≥ 80%（CI 当前门槛 75%，`McpClient` 可测化后提到 80%；本地跑 `mvn -B clean package` 后读 `target/site/jacoco/`）。
 - 测试命名：`methodName_scenario_expectedBehavior`。
 - 带 live 集成测试（DashScope / Anthropic / 真实 MCP）用 `@EnabledIfEnvironmentVariable` 守卫，CI 默认跳过。
 

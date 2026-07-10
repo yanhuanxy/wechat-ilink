@@ -108,7 +108,7 @@
 
 ## 验收标准
 - [x] `mvn compile` 通过
-- [x] `mvn test` 全部通过（492 个测试，6 个 live 测试 @EnabledIfEnvironmentVariable 跳过），覆盖率 >= 80%
+- [x] `mvn test` 全部通过（565 个测试，4 个 live 测试 @EnabledIfEnvironmentVariable 跳过），覆盖率经 P2 补 Farm 排行 + 持久层测试回升至 75.9%；`McpClient` 34% 待 Phase 3 可注入 transport——见 [技术债](../reference/tech-debt.md)
 - [x] 能通过 GameEngine.dispatch 执行种植和收获命令
 - [x] 会话状态正确持久化和恢复
 - [x] 包名重命名后所有现有测试无回归
