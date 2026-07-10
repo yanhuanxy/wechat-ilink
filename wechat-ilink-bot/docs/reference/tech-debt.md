@@ -6,8 +6,8 @@
 
 | 项 | 现状 | 处置 |
 |----|------|------|
-| 整体覆盖率 | **75.9%**（P2 补 Farm 排行 + 持久层测试后；`McpClient` 34% 待 Phase 3 可注入 transport），仍低于 80% 红线 | Phase 3 CI 门槛 + McpClient 可测化 |
-| `McpClient.java` | ~34%（真实 SSE/HTTP 路径无 live 服务难单测） | P2 引入可注入 transport，重写为可测 |
+| 整体覆盖率 | **77.4%**（`McpClient` 纯逻辑 50%，剩余网络路径 + 组合根 + HTTP provider 待补），低于 80% 红线 | 组合根集成测试 + McpClient 可注入 transport + HTTP provider mock |
+| `McpClient.java` | 50%（纯逻辑已测；剩余真实 SSE/HTTP 路径无 live 服务难单测） | 引入可注入 transport，覆盖网络路径 |
 | Farm 排行漏测 | `LevelRankCommand` / `PestRankCommand` / `WeedRankCommand` 零直接测试（同批 Wealth/Steal/Water/RankMenu 有） | 复制 `FarmSocialTest` 模板补 3 个 |
 | 持久层独立测试缺口 | `StealRecordRepository` / `FarmPlotRepository` / `InventoryRepository` / `PlayerRepository` / `MessageDedupRepository` 无独立测试；`ActionRankRepository` 仅 1 极浅用例 | 逐个补，`MessageDedupRepository`（可靠性关键路径）优先 |
 
