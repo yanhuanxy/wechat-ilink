@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [ main, dev ]
+    branches: [ master, dev ]
   pull_request:
-    branches: [ main, dev ]
+    branches: [ master, dev ]
 
 jobs:
   build:
@@ -13,22 +13,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up JDK 8
+      - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '8'
+          java-version: '17'
           cache: maven
 
-      # NOTE: this requires the wechat-ilink-sdk dependency in pom.xml to be
-      # resolvable from a public repository. As of now pom.xml references a
-      # -SNAPSHOT that is NOT on Maven Central — pin a released version (e.g.
-      # 2.3.3) or publish the SDK before this job can pass.
-      - name: Build and test
-        run: mvn -B clean package
+      # SDK 3.0.0 已发布到 Maven Central，无需 SNAPSHOT。
+      # Live 集成测试（DashScope / Anthropic / 真实 MCP）由 @EnabledIfEnvironmentVariable 守卫，CI 默认跳过。
+      - name: Build and test (mvn verify)
+        run: mvn -B clean verify
 
-      # Live integration tests (DashScope / Anthropic / real MCP) are guarded by
-      # @EnabledIfEnvironmentVariable and skipped here by design.
       - name: Upload JaCoCo coverage report
         if: always()
         uses: actions/upload-artifact@v4
