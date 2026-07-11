@@ -42,9 +42,9 @@ McpClient（mcp/）── JSON-RPC 2.0 over HTTP+SSE ──►  autogame-xcx MCP
 | `!` 命令 | MCP tool | 同步/异步 | 说明 |
 |---------|----------|----------|------|
 | `!list` | `list_templates` | 同步 | 列出可用模板 |
-| `!run <名称>` | `run_template`({name}) | **异步** | 先回执"开始执行"，完成后回执结果（满足 bot ≤2s SLA） |
-| `!status` | `get_status` | 同步 | 查询执行状态 |
-| `!stop` | `stop_execution` | 同步 | 请求停止；Python 端仅发起方本人（按 `caller` 比对）可停，非本人越权请求会被拒绝并提示当前运行方 |
+| `!run <名称>` | `run_template`({name}) | **异步** | 先回执"开始执行"，完成后回执结果（满足 bot ≤2s SLA）；Python 端按 FIFO 排队执行（迭代 Phase H，见下） |
+| `!status` | `get_status` | 同步 | 查询执行状态；迭代 Phase H 起附带排队信息（`queue_length`/`queue_position`/`overdue`） |
+| `!stop` | `stop_execution` | 同步 | 请求停止；Python 端仅发起方本人（按 `caller` 比对）可停，非本人越权请求会被拒绝并提示当前运行方。迭代 Phase H 起**真取消**：排队中的任务直接摘除，执行中的任务发送取消信号（下一个安全检查点生效，不会立即打断当前动作） |
 | `!report` | `get_report` | 同步 | 上次执行报告 |
 | `!help`（或 `!` 空） | — | — | 渲染 registry 中的 tool 列表 |
 
@@ -53,6 +53,7 @@ McpClient（mcp/）── JSON-RPC 2.0 over HTTP+SSE ──►  autogame-xcx MCP
 - 短 tool（list/status/stop/report）同步阻塞 handleText 调用，但 MCP 往返通常 < 100ms。
 - `callTool` 抛 IOException → 回复"调用失败：<msg>"。
 - **`caller` 字段（迭代C）**：5 个 tool 调用的 `arguments` 都带 `caller`（`BotInstance` 的 `BotConfig.name`，`create` 走配置名、`createDynamic` 固定 `"dynamic"`），Python 端据此做 `get_status` 归属 / `stop_execution` 越权校验。注意这是**账号级**标识，不是发指令的微信 userId——进程内所有 WeChat 账号共享同一个 `McpClient` 连接，`caller` 用来在多账号共享一个远程 autogame 时区分"谁在跑"。
+- **执行队列（迭代 Phase H，Python 端）**：Python 端 `ExecutorBridge` 用 FIFO 队列（默认容量 2，可配置）严格串行执行 `run_template`，不做真并发；同一 `caller` 同时只能有一个在途（排队中或执行中）请求，重复发起会收到 `{error, reason:"duplicate_caller"}`；队列已满收到 `{error, reason:"queue_full"}`；排队等待超过阈值（默认 300s）或执行超过阈值（默认 480s）会分别收到 `reason:"queue_wait_timeout"`/`reason:"execution_overdue"`——**执行超时不代表任务已停止**，Python 端会发送取消信号并在下一个安全检查点真正停止，此次 `run_template` 调用会先行返回错误，不会挂到 bot 端 600s 硬超时。详见 [wechat-ilink-autogame-xcx/doc/ROADMAP.md](../../../wechat-ilink-autogame-xcx/doc/ROADMAP.md) 的 Phase H。
 
 ## MCP 握手与调用协议
 
@@ -97,8 +98,11 @@ McpClient（mcp/）── JSON-RPC 2.0 over HTTP+SSE ──►  autogame-xcx MCP
 |------|------|------|
 | `host` | `127.0.0.1` | `McpServerThread` 绑定地址；仅本机需要保持默认，远程访问需改为非回环地址（如局域网 IP） |
 | `auth_token` | `null` | 非空时 `_BearerAuthMiddleware` 校验 `/sse`、`/messages` 两条路由；需与本仓库的 `authToken` 一致 |
+| `queue_capacity` | `2` | 迭代 Phase H 新增；`run_template` FIFO 队列容量上限（含正在执行的一项），超出拒绝新请求 |
+| `queue_wait_timeout_seconds` | `300` | 迭代 Phase H 新增；排队等待超过该时长会被摘除并报错（`<=0` 表示禁用） |
+| `execution_timeout_seconds` | `480` | 迭代 Phase H 新增；单次执行超过该时长会发送取消信号并提前返回错误（`<=0` 表示禁用） |
 
-由 `mcp/server_config.py` 的 `load()` 读取，缺省生成模板；`ui/main_window.py::_build_mcp_server()` 装配进 `McpServerThread`。
+由 `mcp/server_config.py` 的 `load()` 读取，缺省生成模板；`ui/main_window.py::_build_mcp_server()` 装配进 `ExecutorBridge`/`McpServerThread`。
 
 ## 接线
 
