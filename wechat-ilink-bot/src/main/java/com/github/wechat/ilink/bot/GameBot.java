@@ -65,7 +65,7 @@ public class GameBot implements OnMessageListener, ModeSender, MediaDownloader {
         this(engine, renderer, llmProvider, chatHistory, sessions,
                 streamingEnabled, typingIntervalMs, llmQueue, taskHandler,
                 claudeMode, claudeSessionRepo, null, null, new ReliabilityConfig(),
-                Collections.<String>emptySet(), null, false);
+                Collections.<String>emptySet(), null, false, null);
     }
 
     public GameBot(GameEngine engine, ResponseRenderer renderer,
@@ -76,7 +76,8 @@ public class GameBot implements OnMessageListener, ModeSender, MediaDownloader {
                    ClaudeSessionRepository claudeSessionRepo,
                    McpClient mcpClient, McpToolRegistry mcpToolRegistry,
                    ReliabilityConfig reliability, Set<String> claudeAdminUsers,
-                   MessageDedupRepository dedup, boolean adminDefaultPrivileged) {
+                   MessageDedupRepository dedup, boolean adminDefaultPrivileged,
+                   String botName) {
         this.engine = engine;
         this.renderer = renderer;
         this.dedup = dedup;
@@ -95,7 +96,7 @@ public class GameBot implements OnMessageListener, ModeSender, MediaDownloader {
                 .sessions(sessions).taskHandler(taskHandler).claudeSessionRepo(claudeSessionRepo)
                 .streamingEnabled(streamingEnabled).typingIntervalMs(typingIntervalMs)
                 .mcpClient(mcpClient).mcpToolRegistry(mcpToolRegistry).hooks(hookRegistry).build();
-        AutogameMode autogameMode = mcpClient != null ? new AutogameMode() : null;
+        AutogameMode autogameMode = mcpClient != null ? new AutogameMode(botName) : null;
         if (hookConfig.isRateLimit()) {
             RateLimiter rateLimiter = new RateLimiter(reliability.getRateLimitPerMin(), reliability.getRateLimitWindowMs());
             rateLimiter.startCleanup();

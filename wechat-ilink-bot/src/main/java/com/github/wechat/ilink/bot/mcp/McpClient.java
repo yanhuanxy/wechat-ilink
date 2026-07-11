@@ -3,7 +3,9 @@ package com.github.wechat.ilink.bot.mcp;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.launchdarkly.eventsource.ConnectStrategy;
 import com.launchdarkly.eventsource.EventSource;
+import com.launchdarkly.eventsource.HttpConnectStrategy;
 import com.launchdarkly.eventsource.MessageEvent;
 import com.launchdarkly.eventsource.background.BackgroundEventHandler;
 import com.launchdarkly.eventsource.background.BackgroundEventSource;
@@ -51,6 +53,8 @@ import java.util.concurrent.atomic.AtomicReference;
  *   - 请求超时或 POST 失败时清理 pending，防内存泄漏。
  *
  * 不实现：cancellation、resource（只关心 tools）、sampling。
+ *
+ * 鉴权（迭代C）：authToken 非空时 SSE 连接与所有 POST 请求带 {@code Authorization: Bearer <token>}。
  */
 public final class McpClient {
 
@@ -62,6 +66,7 @@ public final class McpClient {
     private static final String PROTOCOL_VERSION = "2024-11-05";
 
     private final String baseUrl;
+    private final String authToken;
     private final OkHttpClient http;
     private BackgroundEventSource sse;
 
@@ -75,11 +80,19 @@ public final class McpClient {
     private volatile boolean sseAlive = false;
 
     public McpClient(String baseUrl) {
+        this(baseUrl, null);
+    }
+
+    /**
+     * @param authToken 非空时随 SSE 连接 + POST 请求带 {@code Authorization: Bearer <token>}；为空则不鉴权（本地开发兼容）
+     */
+    public McpClient(String baseUrl, String authToken) {
         String url = baseUrl.trim();
         while (url.endsWith("/")) {
             url = url.substring(0, url.length() - 1);
         }
         this.baseUrl = url;
+        this.authToken = (authToken == null || authToken.isEmpty()) ? null : authToken;
         this.http = new OkHttpClient.Builder()
                 .connectTimeout(10, TimeUnit.SECONDS)
                 .readTimeout(60, TimeUnit.SECONDS)
@@ -236,7 +249,11 @@ public final class McpClient {
             }
         };
         URI uri = URI.create(this.baseUrl + "/sse");
-        EventSource.Builder esBuilder = new EventSource.Builder(uri);
+        HttpConnectStrategy connectStrategy = ConnectStrategy.http(uri);
+        if (authToken != null) {
+            connectStrategy = connectStrategy.header("Authorization", "Bearer " + authToken);
+        }
+        EventSource.Builder esBuilder = new EventSource.Builder(connectStrategy);
         return new BackgroundEventSource.Builder(handler, esBuilder).build();
     }
 
@@ -291,7 +308,11 @@ public final class McpClient {
         pending.put(id, future);
 
         RequestBody rb = RequestBody.create(MAPPER.writeValueAsString(body), JSON);
-        Request req = new Request.Builder().url(endpoint).post(rb).build();
+        Request.Builder reqBuilder = new Request.Builder().url(endpoint).post(rb);
+        if (authToken != null) {
+            reqBuilder.header("Authorization", "Bearer " + authToken);
+        }
+        Request req = reqBuilder.build();
         try (Response resp = http.newCall(req).execute()) {
             int code = resp.code();
             // 202 Accepted：server 收到，响应走 SSE
@@ -320,7 +341,11 @@ public final class McpClient {
         body.put("method", method);
         body.set("params", MAPPER.valueToTree(params));
         RequestBody rb = RequestBody.create(MAPPER.writeValueAsString(body), JSON);
-        Request req = new Request.Builder().url(endpoint).post(rb).build();
+        Request.Builder reqBuilder = new Request.Builder().url(endpoint).post(rb);
+        if (authToken != null) {
+            reqBuilder.header("Authorization", "Bearer " + authToken);
+        }
+        Request req = reqBuilder.build();
         try (Response resp = http.newCall(req).execute()) {
             if (resp.code() != 202 && resp.code() != 200) {
                 log.warn("Notification {} returned HTTP {}", method, resp.code());

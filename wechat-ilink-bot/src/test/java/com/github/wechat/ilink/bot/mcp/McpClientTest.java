@@ -2,7 +2,12 @@ package com.github.wechat.ilink.bot.mcp;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.Test;
+
+import java.net.InetSocketAddress;
+import java.util.Collections;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -199,5 +204,83 @@ class McpClientTest {
         client.handleSseEvent("endpoint", "/messages/?session_id=x");
 
         assertTrue(client.isConnected());
+    }
+
+    // ---------------- 鉴权 header（迭代C） ----------------
+
+    @Test
+    void callTool_withAuthToken_sendsAuthorizationHeader() throws Exception {
+        HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        AtomicReference<String> capturedAuth = new AtomicReference<String>();
+        server.createContext("/messages/", exchange -> {
+            capturedAuth.set(exchange.getRequestHeaders().getFirst("Authorization"));
+            exchange.sendResponseHeaders(202, -1);
+            exchange.close();
+        });
+        server.start();
+        try {
+            String base = "http://127.0.0.1:" + server.getAddress().getPort();
+            McpClient client = new McpClient(base, "secret-token");
+            client.onSseOpen();
+            client.handleSseEvent("endpoint", base + "/messages/");
+
+            Thread caller = new Thread(() -> {
+                try {
+                    client.callTool("list_templates", Collections.<String, Object>emptyMap());
+                } catch (Exception ignored) {
+                    // 测试只关心请求头，不关心 future 是否真正完成
+                }
+            });
+            caller.start();
+            // 首次调用 id 固定为 1（新建 client 的 nextId 从 1 起）；POST 落地后立刻回一条 SSE 完成 future，避免真等超时
+            awaitPendingRequest(client);
+            client.handleSseEvent("message", "{\"id\":1,\"result\":{\"content\":[]}}");
+            caller.join(2000);
+
+            assertEquals("Bearer secret-token", capturedAuth.get());
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    @Test
+    void callTool_withoutAuthToken_omitsAuthorizationHeader() throws Exception {
+        HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        AtomicReference<String> capturedAuth = new AtomicReference<String>();
+        server.createContext("/messages/", exchange -> {
+            capturedAuth.set(exchange.getRequestHeaders().getFirst("Authorization"));
+            exchange.sendResponseHeaders(202, -1);
+            exchange.close();
+        });
+        server.start();
+        try {
+            String base = "http://127.0.0.1:" + server.getAddress().getPort();
+            McpClient client = new McpClient(base);
+            client.onSseOpen();
+            client.handleSseEvent("endpoint", base + "/messages/");
+
+            Thread caller = new Thread(() -> {
+                try {
+                    client.callTool("list_templates", Collections.<String, Object>emptyMap());
+                } catch (Exception ignored) {
+                    // 同上，只关心请求头
+                }
+            });
+            caller.start();
+            awaitPendingRequest(client);
+            client.handleSseEvent("message", "{\"id\":1,\"result\":{\"content\":[]}}");
+            caller.join(2000);
+
+            assertNull(capturedAuth.get(), "未配置 token 时不应发送 Authorization header");
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    private void awaitPendingRequest(McpClient client) throws InterruptedException {
+        long deadline = System.currentTimeMillis() + 2000;
+        while (client.pendingCount() == 0 && System.currentTimeMillis() < deadline) {
+            Thread.sleep(10);
+        }
     }
 }

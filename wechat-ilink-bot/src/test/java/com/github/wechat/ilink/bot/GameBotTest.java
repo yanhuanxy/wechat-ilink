@@ -383,7 +383,7 @@ class GameBotTest {
         GameEngine engine = new GameEngine(parser, sessionManager, registry);
         GameBot dedupBot = new GameBot(engine, new ResponseRenderer(), null, new ChatHistoryManager(20),
                 sessionManager, false, 5000, new LlmRequestQueue(3, 50), null, null, null,
-                null, null, new ReliabilityConfig(), Collections.<String>emptySet(), dedup, false);
+                null, null, new ReliabilityConfig(), Collections.<String>emptySet(), dedup, false, "test-bot");
         dedupBot.setClient(client);
         return dedupBot;
     }

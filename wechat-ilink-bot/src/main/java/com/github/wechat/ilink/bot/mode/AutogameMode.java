@@ -9,7 +9,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
@@ -35,6 +34,9 @@ public class AutogameMode implements BotMode {
 
     private static final Logger log = LoggerFactory.getLogger(AutogameMode.class);
 
+    // 迭代C：发给 Python 端 MCP tool 的 caller 标识（帐号级，用于越权校验/status 归属），非微信 userId。
+    private final String botName;
+
     private final ExecutorService asyncExecutor = Executors.newSingleThreadExecutor(new java.util.concurrent.ThreadFactory() {
         private final java.util.concurrent.atomic.AtomicInteger counter = new java.util.concurrent.atomic.AtomicInteger(0);
 
@@ -45,6 +47,10 @@ public class AutogameMode implements BotMode {
             return t;
         }
     });
+
+    public AutogameMode(String botName) {
+        this.botName = botName;
+    }
 
     @Override
     public BotModeType type() {
@@ -76,18 +82,18 @@ public class AutogameMode implements BotMode {
             if ("help".equals(cmd)) {
                 sendHelp(ctx, userId);
             } else if ("list".equals(cmd)) {
-                McpToolResult r = client.callTool("list_templates", Collections.<String, Object>emptyMap());
+                McpToolResult r = client.callTool("list_templates", callerArgs());
                 send(sender, userId, "本地模板：\n" + r.getText());
             } else if ("run".equals(cmd)) {
                 handleRun(ctx, userId, arg);
             } else if ("status".equals(cmd)) {
-                McpToolResult r = client.callTool("get_status", Collections.<String, Object>emptyMap());
+                McpToolResult r = client.callTool("get_status", callerArgs());
                 send(sender, userId, "状态：\n" + r.getText());
             } else if ("stop".equals(cmd)) {
-                McpToolResult r = client.callTool("stop_execution", Collections.<String, Object>emptyMap());
+                McpToolResult r = client.callTool("stop_execution", callerArgs());
                 send(sender, userId, r.getText());
             } else if ("report".equals(cmd)) {
-                McpToolResult r = client.callTool("get_report", Collections.<String, Object>emptyMap());
+                McpToolResult r = client.callTool("get_report", callerArgs());
                 send(sender, userId, "上次执行报告：\n" + r.getText());
             } else {
                 send(sender, userId, "未知命令：!" + cmd + "\n输入 !help 查看可用命令");
@@ -112,7 +118,7 @@ public class AutogameMode implements BotMode {
             @Override
             public void run() {
                 try {
-                    Map<String, Object> args = new HashMap<String, Object>();
+                    Map<String, Object> args = callerArgs();
                     args.put("name", name);
                     McpToolResult r = client.callTool("run_template", args);
                     String reply = r.isError()
@@ -126,6 +132,15 @@ public class AutogameMode implements BotMode {
             }
         };
         asyncExecutor.submit(task);
+    }
+
+    /** 每次 tool 调用都带上调用方（bot 账号）标识，供 Python 端做 status 归属 / 越权校验。 */
+    private Map<String, Object> callerArgs() {
+        Map<String, Object> args = new HashMap<String, Object>();
+        if (botName != null) {
+            args.put("caller", botName);
+        }
+        return args;
     }
 
     private void sendHelp(ModeContext ctx, String userId) {
