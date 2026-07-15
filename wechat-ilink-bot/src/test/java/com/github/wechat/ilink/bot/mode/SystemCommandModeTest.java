@@ -1,5 +1,6 @@
 package com.github.wechat.ilink.bot.mode;
 
+import com.github.wechat.ilink.bot.mcp.McpClient;
 import com.github.wechat.ilink.bot.mode.claude.ClaudeSession;
 import com.github.wechat.ilink.bot.persistence.ClaudeSessionRepository;
 import com.github.wechat.ilink.bot.persistence.DatabaseManager;
@@ -348,6 +349,34 @@ class SystemCommandModeTest {
         assertTrue(session.isClaudeApprovedExec(), "非 admin 也置 approved 标志");
         assertFalse(session.isClaudePrivileged(), "非 admin 不提权");
         verify(sender).sendText(eq("guest"), contains("非管理员"));
+    }
+
+    @Test
+    void handleText_status_withoutMcp_omitsAutogameLine() throws Exception {
+        PlayerSession session = sessionManager.getOrCreate("user1");
+
+        mode.handleText(ctx, session, "/status");
+
+        ArgumentCaptor<String> captor = ArgumentCaptor.forClass(String.class);
+        verify(sender).sendText(eq("user1"), captor.capture());
+        assertFalse(captor.getValue().contains("Autogame"), "未接 MCP 时不应出现 Autogame 状态行");
+    }
+
+    @Test
+    void handleText_status_withMcp_reportsConnectionAndPendingCount() throws Exception {
+        McpClient mcpClient = mock(McpClient.class);
+        when(mcpClient.isConnected()).thenReturn(true);
+        when(mcpClient.pendingCount()).thenReturn(2);
+        ModeContext mcpCtx = ModeContext.builder()
+                .sender(sender).sessions(sessionManager).claudeSessionRepo(repo).mcpClient(mcpClient).build();
+        PlayerSession session = sessionManager.getOrCreate("user1");
+
+        mode.handleText(mcpCtx, session, "/status");
+
+        ArgumentCaptor<String> captor = ArgumentCaptor.forClass(String.class);
+        verify(sender).sendText(eq("user1"), captor.capture());
+        assertTrue(captor.getValue().contains("已连接"));
+        assertTrue(captor.getValue().contains("2"));
     }
 
     @Test

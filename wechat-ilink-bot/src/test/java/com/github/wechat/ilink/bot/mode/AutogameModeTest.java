@@ -5,8 +5,10 @@ import com.github.wechat.ilink.bot.mcp.McpToolResult;
 import com.github.wechat.ilink.bot.mcp.McpToolRegistry;
 import com.github.wechat.ilink.bot.session.PlayerSession;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 import java.io.IOException;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -29,7 +31,7 @@ class AutogameModeTest {
         when(client.isConnected()).thenReturn(false);
         ModeSender sender = mock(ModeSender.class);
 
-        new AutogameMode().handleText(ctx(client, null, sender), new PlayerSession("u1"), "!list");
+        new AutogameMode("bot1").handleText(ctx(client, null, sender), new PlayerSession("u1"), "!list");
 
         verify(sender).sendText(eq("u1"), contains("MCP 服务未启用"));
     }
@@ -41,7 +43,7 @@ class AutogameModeTest {
         when(client.callTool(eq("list_templates"), anyMap())).thenReturn(new McpToolResult(false, "签到\n浇水"));
         ModeSender sender = mock(ModeSender.class);
 
-        new AutogameMode().handleText(ctx(client, null, sender), new PlayerSession("u1"), "!list");
+        new AutogameMode("bot1").handleText(ctx(client, null, sender), new PlayerSession("u1"), "!list");
 
         verify(sender).sendText(eq("u1"), contains("签到"));
     }
@@ -53,7 +55,7 @@ class AutogameModeTest {
         when(client.callTool(eq("get_status"), anyMap())).thenThrow(new IOException("boom"));
         ModeSender sender = mock(ModeSender.class);
 
-        new AutogameMode().handleText(ctx(client, null, sender), new PlayerSession("u1"), "!status");
+        new AutogameMode("bot1").handleText(ctx(client, null, sender), new PlayerSession("u1"), "!status");
 
         verify(sender).sendText(eq("u1"), contains("调用失败"));
     }
@@ -64,7 +66,7 @@ class AutogameModeTest {
         when(client.isConnected()).thenReturn(true);
         ModeSender sender = mock(ModeSender.class);
 
-        new AutogameMode().handleText(ctx(client, null, sender), new PlayerSession("u1"), "!bogus");
+        new AutogameMode("bot1").handleText(ctx(client, null, sender), new PlayerSession("u1"), "!bogus");
 
         verify(sender).sendText(eq("u1"), contains("未知命令"));
     }
@@ -75,7 +77,7 @@ class AutogameModeTest {
         when(client.isConnected()).thenReturn(true);
         ModeSender sender = mock(ModeSender.class);
 
-        new AutogameMode().handleText(ctx(client, null, sender), new PlayerSession("u1"), "!");
+        new AutogameMode("bot1").handleText(ctx(client, null, sender), new PlayerSession("u1"), "!");
 
         verify(sender).sendText(eq("u1"), contains("!run"));
     }
@@ -87,7 +89,7 @@ class AutogameModeTest {
         when(client.callTool(eq("run_template"), anyMap())).thenReturn(new McpToolResult(false, "ok"));
         ModeSender sender = mock(ModeSender.class);
 
-        new AutogameMode().handleText(ctx(client, null, sender), new PlayerSession("u1"), "!run 签到");
+        new AutogameMode("bot1").handleText(ctx(client, null, sender), new PlayerSession("u1"), "!run 签到");
 
         verify(sender).sendText(eq("u1"), contains("开始执行模板"));
         verify(sender, timeout(2000)).sendText(eq("u1"), contains("执行完成"));
@@ -100,13 +102,44 @@ class AutogameModeTest {
         when(client.callTool(eq("run_template"), anyMap())).thenThrow(new IOException("down"));
         ModeSender sender = mock(ModeSender.class);
 
-        new AutogameMode().handleText(ctx(client, null, sender), new PlayerSession("u1"), "!run 签到");
+        new AutogameMode("bot1").handleText(ctx(client, null, sender), new PlayerSession("u1"), "!run 签到");
 
         verify(sender, timeout(2000)).sendText(eq("u1"), contains("执行异常"));
     }
 
     @Test
     void type_returnsAutogame() {
-        assertEquals(BotModeType.AUTOGAME, new AutogameMode().type());
+        assertEquals(BotModeType.AUTOGAME, new AutogameMode("bot1").type());
+    }
+
+    @Test
+    void handleText_list_sendsCallerInArguments() throws Exception {
+        McpClient client = mock(McpClient.class);
+        when(client.isConnected()).thenReturn(true);
+        when(client.callTool(eq("list_templates"), anyMap())).thenReturn(new McpToolResult(false, ""));
+        ModeSender sender = mock(ModeSender.class);
+
+        new AutogameMode("bot1").handleText(ctx(client, null, sender), new PlayerSession("u1"), "!list");
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
+        verify(client).callTool(eq("list_templates"), captor.capture());
+        assertEquals("bot1", captor.getValue().get("caller"));
+    }
+
+    @Test
+    void handleText_run_sendsCallerAndNameInArguments() throws Exception {
+        McpClient client = mock(McpClient.class);
+        when(client.isConnected()).thenReturn(true);
+        when(client.callTool(eq("run_template"), anyMap())).thenReturn(new McpToolResult(false, "ok"));
+        ModeSender sender = mock(ModeSender.class);
+
+        new AutogameMode("bot1").handleText(ctx(client, null, sender), new PlayerSession("u1"), "!run 签到");
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
+        verify(client, timeout(2000)).callTool(eq("run_template"), captor.capture());
+        assertEquals("bot1", captor.getValue().get("caller"));
+        assertEquals("签到", captor.getValue().get("name"));
     }
 }

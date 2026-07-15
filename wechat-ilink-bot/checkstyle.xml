@@ -1,0 +1,59 @@
+<?xml version="1.0"?>
+<!DOCTYPE module PUBLIC
+    "-//Checkstyle//DTD Checkstyle Configuration 1.3//EN"
+    "https://checkstyle.org/dtds/configuration_1_3.dtd">
+
+<!--
+    wechat-ilink-bot checkstyle 规则子集。
+    对齐 CLAUDE.md 项目契约中的硬性规则：
+      - 单文件 <= 400 行
+      - 单方法 <= 60 行
+      - 禁止 System.out/printStackTrace，统一 SLF4J
+      - 敏感数据（botToken/contextToken）不得出现在日志中（本规则用 regex 兜底）
+
+    策略：warn-only 起步（pom.xml 配 failsOnError=false），
+    历史告警不堵构建，新代码触发告警会被 review 时看到。
+    迭代 A 后续阶段逐步收紧到 fail。
+-->
+<module name="Checker">
+    <property name="charset" value="UTF-8"/>
+    <property name="severity" value="warning"/>
+    <property name="fileExtensions" value="java"/>
+
+    <!-- 每文件最大行数：CLAUDE.md 规定 <= 400 -->
+    <module name="FileLength">
+        <property name="max" value="400"/>
+        <message key="maxLen.file" value="单文件超过 400 行（CLAUDE.md 项目契约）。"/>
+    </module>
+
+    <module name="TreeWalker">
+        <!-- 每方法最大行数：CLAUDE.md 规定 <= 60 -->
+        <module name="MethodLength">
+            <property name="max" value="60"/>
+            <property name="tokens" value="METHOD_DEF, CTOR_DEF"/>
+        </module>
+
+        <!-- 禁止 System.out / System.err / printStackTrace -->
+        <module name="RegexpSinglelineJava">
+            <property name="format" value="System\.(out|err)\."/>
+            <message key="regexp.regexp" value="禁止 System.out/err，统一用 SLF4J（CLAUDE.md 项目契约）。"/>
+        </module>
+        <module name="RegexpSinglelineJava">
+            <property name="format" value="\.printStackTrace\(\)"/>
+            <message key="regexp.regexp" value="禁止 printStackTrace，统一用 SLF4J（CLAUDE.md 项目契约）。"/>
+        </module>
+
+        <!-- 敏感数据兜底：日志语句中不应出现 token 字面量（粗粒度，防 typo） -->
+        <module name="RegexpSinglelineJava">
+            <property name="format" value="log\w*\.(info|debug|warn|error|trace)\(.*[Tt]oken.*"/>
+            <message key="regexp.regexp" value="日志中疑似出现 token 字符串，确认是否为敏感数据（CLAUDE.md 项目契约）。"/>
+        </module>
+
+        <!-- 基础整洁规则（成本极低、收益稳定） -->
+        <module name="UnusedImports"/>
+        <module name="RedundantImport"/>
+        <module name="EmptyBlock">
+            <property name="tokens" value="LITERAL_CATCH"/>
+        </module>
+    </module>
+</module>

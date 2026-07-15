@@ -345,6 +345,10 @@ public class SystemCommandMode implements BotMode {
         sb.append("玩家：Lv.").append(session.getLevel())
           .append("（").append(session.getExp()).append("/").append(session.getLevel() * 100).append(" EXP）\n");
         sb.append("金币：").append(session.getGold());
+        if (ctx.mcpClient() != null) {
+            sb.append("\nAutogame：").append(ctx.mcpClient().isConnected() ? "已连接" : "未连接")
+              .append("（在途请求 ").append(ctx.mcpClient().pendingCount()).append("）");
+        }
         send(ctx, session.getUserId(), sb.toString());
     }
 

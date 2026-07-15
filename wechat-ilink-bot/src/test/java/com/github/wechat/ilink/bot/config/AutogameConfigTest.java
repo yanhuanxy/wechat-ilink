@@ -14,27 +14,37 @@ class AutogameConfigTest {
     File tempDir;
 
     @Test
-    void defaults_disabledWithLocalhostUrl() {
+    void defaults_disabledWithLocalUrlAndNoToken() {
         AutogameConfig config = new AutogameConfig();
+
         assertFalse(config.isEnabled());
         assertEquals("http://localhost:8765", config.getMcpUrl());
+        assertNull(config.getAuthToken());
     }
 
     @Test
     void load_missingFile_returnsDefaultsAndCreatesTemplate() {
-        File missing = new File(tempDir, "sub/autogame-config.json");
+        File missing = new File(tempDir, "nope/autogame-config.json");
+
         AutogameConfig config = AutogameConfig.load(missing.getAbsolutePath());
+
         assertFalse(config.isEnabled());
-        assertEquals("http://localhost:8765", config.getMcpUrl());
-        assertTrue(missing.exists()); // 模板已生成
+        assertNull(config.getAuthToken());
+        assertTrue(missing.exists());
     }
 
     @Test
-    void load_validFile_appliesValues() throws Exception {
+    void load_validFile_appliesAuthToken() throws Exception {
         File file = new File(tempDir, "autogame-config.json");
-        write(file, "{\"enabled\":true,\"mcpUrl\":\"http://remote:9000\"}");
+        FileWriter w = new FileWriter(file);
+        w.write("{\"enabled\":true,\"mcpUrl\":\"http://10.0.0.5:8765\",\"authToken\":\"secret-token\"}");
+        w.close();
+
         AutogameConfig config = AutogameConfig.load(file.getAbsolutePath());
+
         assertTrue(config.isEnabled());
+        assertEquals("http://10.0.0.5:8765", config.getMcpUrl());
+        assertEquals("secret-token", config.getAuthToken());
         assertEquals("http://remote:9000", config.getMcpUrl());
     }
 

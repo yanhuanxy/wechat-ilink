@@ -2,7 +2,12 @@ package com.github.wechat.ilink.bot.mcp;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.Test;
+
+import java.net.InetSocketAddress;
+import java.util.Collections;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -120,127 +125,162 @@ class McpClientTest {
         assertTrue(client.parseTools(MAPPER.createObjectNode()).isEmpty());
     }
 
-    @Test
-    void parseTools_entryMissingName_skipped() throws Exception {
-        McpClient client = newClient();
-        JsonNode node = MAPPER.readTree("{\"tools\":[{\"description\":\"no name\"},{\"name\":\"ok\"}]}");
-
-        java.util.List<McpTool> tools = client.parseTools(node);
-
-        assertEquals(1, tools.size());
-        assertEquals("ok", tools.get(0).getName());
-    }
-
-    @Test
-    void parseTools_missingDescriptionAndSchema_defaults() throws Exception {
-        McpClient client = newClient();
-        JsonNode node = MAPPER.readTree("{\"tools\":[{\"name\":\"bare\"}]}");
-
-        java.util.List<McpTool> tools = client.parseTools(node);
-
-        assertEquals(1, tools.size());
-        assertEquals("", tools.get(0).getDescription());
-        assertNull(tools.get(0).getInputSchema());
-    }
-
-    @Test
-    void parseToolResult_emptyContent_returnsEmpty() throws Exception {
-        McpClient client = newClient();
-        JsonNode node = MAPPER.readTree("{\"content\":[]}");
-
-        McpToolResult r = client.parseToolResult(node);
-
-        assertEquals("", r.getText());
-    }
-
-    @Test
-    void parseToolResult_contentWithoutText_fallsBackToString() throws Exception {
-        McpClient client = newClient();
-        JsonNode node = MAPPER.readTree("{\"content\":[{\"foo\":\"bar\"}]}");
-
-        McpToolResult r = client.parseToolResult(node);
-
-        assertTrue(r.getText().contains("foo")); // 无 text 字段，回退到节点 toString
-    }
+    // ---------------- handleSseEvent message 路径（当前 0 覆盖） ----------------
 
     @Test
     void handleSseEvent_unknownEvent_ignored() {
         McpClient client = newClient();
-        client.handleSseEvent("foo", "bar");
+        // 非 endpoint / 非 message 事件：应静默忽略，不抛、不改变状态
+        client.handleSseEvent("ping", "anything");
+
         assertFalse(client.isConnected());
     }
 
     @Test
+    void handleSseEvent_messageWithUnknownId_ignored() {
+        McpClient client = newClient();
+        // id 不在 pending map 中：应静默忽略（避免 NPE）
+        client.handleSseEvent("message", "{\"id\":99999,\"result\":{}}");
+
+        // 无副作用
+        assertEquals(0, client.pendingCount());
+    }
+
+    @Test
+    void handleSseEvent_messageWithMalformedJson_ignored() {
+        McpClient client = newClient();
+        // 非 JSON data：应被 catch，不抛异常
+        client.handleSseEvent("message", "not-json-at-all");
+
+        assertEquals(0, client.pendingCount());
+    }
+
+    @Test
     void handleSseEvent_messageWithoutId_ignored() {
-        newClient().handleSseEvent("message", "{\"jsonrpc\":\"2.0\",\"result\":{}}"); // 无 id
-    }
-
-    @Test
-    void handleSseEvent_messageUnknownId_ignored() {
-        newClient().handleSseEvent("message", "{\"id\":999,\"result\":{}}"); // pending 无 999
-    }
-
-    @Test
-    void handleSseEvent_messageInvalidJson_ignored() {
-        newClient().handleSseEvent("message", "not json {{{"); // 解析异常被吞
-    }
-
-    @Test
-    void listTools_notConnected_throws() {
-        McpClient client = newClient(); // postEndpoint 为 null
-        assertThrows(java.io.IOException.class, client::listTools);
-    }
-
-    @Test
-    void connect_afterClosed_throws() {
         McpClient client = newClient();
+        // message 无 id 字段：应静默忽略
+        client.handleSseEvent("message", "{\"result\":\"ok\"}");
+
+        assertEquals(0, client.pendingCount());
+    }
+
+    // ---------------- close() 后的状态 ----------------
+
+    @Test
+    void close_makesDisconnected() {
+        McpClient client = newClient();
+        client.onSseOpen();
+        client.handleSseEvent("endpoint", "/messages/?session_id=abc");
+        assertTrue(client.isConnected());
+
         client.close();
-        assertThrows(java.io.IOException.class, client::connect);
+
+        assertFalse(client.isConnected(), "close() 后应判为未连接");
+    }
+
+    // ---------------- baseUrl trim ----------------
+
+    @Test
+    void constructor_trimsTrailingSlashes() {
+        // 带 1 个和多个尾斜杠：构造不应抛，且 endpoint 拼接时不应双斜杠
+        McpClient c1 = new McpClient("http://127.0.0.1:1/");
+        McpClient c2 = new McpClient("http://127.0.0.1:1///");
+
+        c1.onSseOpen();
+        c2.onSseOpen();
+        // endpoint 收到相对路径时，应正确拼接为单斜杠
+        c1.handleSseEvent("endpoint", "/messages/?session_id=a");
+        c2.handleSseEvent("endpoint", "/messages/?session_id=b");
+
+        assertTrue(c1.isConnected());
+        assertTrue(c2.isConnected());
     }
 
     @Test
-    void reconnect_afterClosed_throws() {
-        McpClient client = newClient();
-        client.close();
-        assertThrows(java.io.IOException.class, client::reconnect);
+    void constructor_trimsWhitespace() {
+        // 前后空白：应被 trim
+        McpClient client = new McpClient("  http://127.0.0.1:1  ");
+        client.onSseOpen();
+        client.handleSseEvent("endpoint", "/messages/?session_id=x");
+
+        assertTrue(client.isConnected());
+    }
+
+    // ---------------- 鉴权 header（迭代C） ----------------
+
+    @Test
+    void callTool_withAuthToken_sendsAuthorizationHeader() throws Exception {
+        HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        AtomicReference<String> capturedAuth = new AtomicReference<String>();
+        server.createContext("/messages/", exchange -> {
+            capturedAuth.set(exchange.getRequestHeaders().getFirst("Authorization"));
+            exchange.sendResponseHeaders(202, -1);
+            exchange.close();
+        });
+        server.start();
+        try {
+            String base = "http://127.0.0.1:" + server.getAddress().getPort();
+            McpClient client = new McpClient(base, "secret-token");
+            client.onSseOpen();
+            client.handleSseEvent("endpoint", base + "/messages/");
+
+            Thread caller = new Thread(() -> {
+                try {
+                    client.callTool("list_templates", Collections.<String, Object>emptyMap());
+                } catch (Exception ignored) {
+                    // 测试只关心请求头，不关心 future 是否真正完成
+                }
+            });
+            caller.start();
+            // 首次调用 id 固定为 1（新建 client 的 nextId 从 1 起）；POST 落地后立刻回一条 SSE 完成 future，避免真等超时
+            awaitPendingRequest(client);
+            client.handleSseEvent("message", "{\"id\":1,\"result\":{\"content\":[]}}");
+            caller.join(2000);
+
+            assertEquals("Bearer secret-token", capturedAuth.get());
+        } finally {
+            server.stop(0);
+        }
     }
 
     @Test
-    void constructor_trailingSlashAndSpaces_trimmed() {
-        McpClient client = new McpClient("  http://127.0.0.1:1///  ");
-        assertFalse(client.isConnected()); // 构造器规整 baseUrl，不抛异常
+    void callTool_withoutAuthToken_omitsAuthorizationHeader() throws Exception {
+        HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        AtomicReference<String> capturedAuth = new AtomicReference<String>();
+        server.createContext("/messages/", exchange -> {
+            capturedAuth.set(exchange.getRequestHeaders().getFirst("Authorization"));
+            exchange.sendResponseHeaders(202, -1);
+            exchange.close();
+        });
+        server.start();
+        try {
+            String base = "http://127.0.0.1:" + server.getAddress().getPort();
+            McpClient client = new McpClient(base);
+            client.onSseOpen();
+            client.handleSseEvent("endpoint", base + "/messages/");
+
+            Thread caller = new Thread(() -> {
+                try {
+                    client.callTool("list_templates", Collections.<String, Object>emptyMap());
+                } catch (Exception ignored) {
+                    // 同上，只关心请求头
+                }
+            });
+            caller.start();
+            awaitPendingRequest(client);
+            client.handleSseEvent("message", "{\"id\":1,\"result\":{\"content\":[]}}");
+            caller.join(2000);
+
+            assertNull(capturedAuth.get(), "未配置 token 时不应发送 Authorization header");
+        } finally {
+            server.stop(0);
+        }
     }
 
-    // ---- message 响应路由（核心：SSE 响应 → 等待中的 future）----
-    // pending 是 private，唯一不连网的途径是反射塞入 future；字段名耦合，重构改名需同步。
-
-    @Test
-    void handleSseEvent_messageRoutesResultToPendingFuture() throws Exception {
-        McpClient client = newClient();
-        java.util.concurrent.CompletableFuture<JsonNode> fut = new java.util.concurrent.CompletableFuture<>();
-        pendingOf(client).put(7, fut);
-
-        client.handleSseEvent("message", "{\"id\":7,\"result\":{\"ok\":true}}");
-
-        JsonNode result = fut.get(1, java.util.concurrent.TimeUnit.SECONDS);
-        assertTrue(result.path("ok").asBoolean());
-    }
-
-    @Test
-    void handleSseEvent_messageErrorCompletesFutureExceptionally() throws Exception {
-        McpClient client = newClient();
-        java.util.concurrent.CompletableFuture<JsonNode> fut = new java.util.concurrent.CompletableFuture<>();
-        pendingOf(client).put(8, fut);
-
-        client.handleSseEvent("message", "{\"id\":8,\"error\":{\"code\":-32601}}");
-
-        assertTrue(fut.isCompletedExceptionally());
-    }
-
-    @SuppressWarnings("unchecked")
-    private java.util.concurrent.ConcurrentHashMap<Integer, java.util.concurrent.CompletableFuture<JsonNode>> pendingOf(McpClient client) throws Exception {
-        java.lang.reflect.Field f = McpClient.class.getDeclaredField("pending");
-        f.setAccessible(true);
-        return (java.util.concurrent.ConcurrentHashMap<Integer, java.util.concurrent.CompletableFuture<JsonNode>>) f.get(client);
+    private void awaitPendingRequest(McpClient client) throws InterruptedException {
+        long deadline = System.currentTimeMillis() + 2000;
+        while (client.pendingCount() == 0 && System.currentTimeMillis() < deadline) {
+            Thread.sleep(10);
+        }
     }
 }

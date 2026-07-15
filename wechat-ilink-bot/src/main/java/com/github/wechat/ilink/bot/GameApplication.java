@@ -234,13 +234,13 @@ public class GameApplication {
             return;
         }
         try {
-            mcpClient = new McpClient(config.getMcpUrl());
+            mcpClient = new McpClient(config.getMcpUrl(), config.getAuthToken());
             mcpClient.connect();
             mcpClient.initialize();
             mcpToolRegistry = new McpToolRegistry(mcpClient);
             mcpToolRegistry.refresh();
-            log.info("Autogame MCP 已启用: url={}, tools={}",
-                    config.getMcpUrl(), mcpToolRegistry.all().size());
+            log.info("Autogame MCP 已启用: url={}, authTokenSet={}, tools={}",
+                    config.getMcpUrl(), isSet(config.getAuthToken()), mcpToolRegistry.all().size());
             mcpHealthMonitor = new McpHealthMonitor(mcpClient, mcpToolRegistry,
                     reliabilityConfig.getMcpHealthIntervalMs(), reliabilityConfig.getMcpToolRefreshTicks());
             mcpHealthMonitor.start();

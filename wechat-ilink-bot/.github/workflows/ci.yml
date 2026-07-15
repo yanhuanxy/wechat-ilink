@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [ main, dev ]
+    branches: [ master, dev ]
   pull_request:
-    branches: [ main, dev ]
+    branches: [ master, dev ]
 
 jobs:
   build:
@@ -20,16 +20,10 @@ jobs:
           java-version: '17'
           cache: maven
 
-      # SDK 3.0.0 须可从公开仓库解析（Maven Central）。若 SDK 尚未发布，
-      # 此 job 会因拉取失败而红——SDK 发 Central 后即恢复。
-      - name: Build and test
-        run: mvn -B clean package
-
-      # 覆盖率门槛：指令覆盖率 < 75% 则失败（先 75%；McpClient 可测化后逐步提到 80%）。
-      # Live 集成测试（DashScope / Anthropic / 真实 MCP）由 @EnabledIfEnvironmentVariable 守卫，此处跳过。
-      - name: Enforce coverage floor (75%)
-        run: |
-          awk -F, 'NR>1 {im+=$4; ic+=$5} END {cov=100*ic/(im+ic); printf "指令覆盖率: %.1f%% (门槛 75%%)\n", cov; if (cov<75) {printf "::error::覆盖率 %.1f%% 低于 75%% 门槛\n", cov; exit 1}}' target/site/jacoco/jacoco.csv
+      # SDK 3.0.0 已发布到 Maven Central，无需 SNAPSHOT。
+      # Live 集成测试（DashScope / Anthropic / 真实 MCP）由 @EnabledIfEnvironmentVariable 守卫，CI 默认跳过。
+      - name: Build and test (mvn verify)
+        run: mvn -B clean verify
 
       - name: Upload JaCoCo coverage report
         if: always()

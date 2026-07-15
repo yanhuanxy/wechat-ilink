@@ -28,12 +28,12 @@ McpClient（mcp/）── JSON-RPC 2.0 over HTTP+SSE ──►  autogame-xcx MCP
 
 | 类 | 职责 |
 |----|------|
-| `McpClient` | JSON-RPC over HTTP+SSE 客户端（okhttp POST + launchdarkly EventSource SSE）。`connect`/`initialize`/`listTools`/`callTool`/`isConnected`/`reconnect`/`pendingCount`/`close` |
+| `McpClient` | JSON-RPC over HTTP+SSE 客户端（okhttp POST + launchdarkly EventSource SSE）。`connect`/`initialize`/`listTools`/`callTool`/`isConnected`/`reconnect`/`pendingCount`/`close`；构造器可传 `authToken`（迭代C，非空时 SSE 连接与所有 POST 请求带 `Authorization: Bearer <token>`） |
 | `McpToolRegistry` | 缓存 `tools/list` 结果（`AtomicReference` 不可变快照）；`refresh`/`all`/`find`/`isLoaded`。单实例被 `AutogameMode` 共享 |
 | `McpHealthMonitor` | daemon 单线程调度器：`isConnected()==false` → `reconnect()`；每 N 周期 `registry.refresh()`（G3 自愈 + G7 tool 刷新） |
 | `McpTool` | tool 元数据 POJO（name / description / inputSchema） |
 | `McpToolResult` | `tools/call` 结果（isError + text；text 是 Python 端约定的 JSON 字符串） |
-| `AutogameConfig` | 配置（enabled / mcpUrl，默认 `http://localhost:8765`），缺省生成模板 |
+| `AutogameConfig` | 配置（enabled / mcpUrl，默认 `http://localhost:8765` / authToken，迭代C新增），缺省生成模板 |
 
 > `McpClient` 的 `sse`/`endpointReady` 因 `reconnect()` 需可变（`sseAlive` volatile、`postEndpoint` AtomicReference），是"字段 `private final`"规则的受控例外。
 
@@ -42,9 +42,9 @@ McpClient（mcp/）── JSON-RPC 2.0 over HTTP+SSE ──►  autogame-xcx MCP
 | `!` 命令 | MCP tool | 同步/异步 | 说明 |
 |---------|----------|----------|------|
 | `!list` | `list_templates` | 同步 | 列出可用模板 |
-| `!run <名称>` | `run_template`({name}) | **异步** | 先回执"开始执行"，完成后回执结果（满足 bot ≤2s SLA） |
-| `!status` | `get_status` | 同步 | 查询执行状态 |
-| `!stop` | `stop_execution` | 同步 | 请求停止 |
+| `!run <名称>` | `run_template`({name}) | **异步** | 先回执"开始执行"，完成后回执结果（满足 bot ≤2s SLA）；Python 端按 FIFO 排队执行（迭代 Phase H，见下） |
+| `!status` | `get_status` | 同步 | 查询执行状态；迭代 Phase H 起附带排队信息（`queue_length`/`queue_position`/`overdue`） |
+| `!stop` | `stop_execution` | 同步 | 请求停止；Python 端仅发起方本人（按 `caller` 比对）可停，非本人越权请求会被拒绝并提示当前运行方。迭代 Phase H 起**真取消**：排队中的任务直接摘除，执行中的任务发送取消信号（下一个安全检查点生效，不会立即打断当前动作） |
 | `!report` | `get_report` | 同步 | 上次执行报告 |
 | `!help`（或 `!` 空） | — | — | 渲染 registry 中的 tool 列表 |
 
@@ -52,6 +52,8 @@ McpClient（mcp/）── JSON-RPC 2.0 over HTTP+SSE ──►  autogame-xcx MCP
 - `run_template` 在 daemon **单线程池**里异步执行（`autogame-async-*`），保证 run 串行——与 Python 端串行 scheduler 对应，避免窗口冲突。
 - 短 tool（list/status/stop/report）同步阻塞 handleText 调用，但 MCP 往返通常 < 100ms。
 - `callTool` 抛 IOException → 回复"调用失败：<msg>"。
+- **`caller` 字段（迭代C）**：5 个 tool 调用的 `arguments` 都带 `caller`（`BotInstance` 的 `BotConfig.name`，`create` 走配置名、`createDynamic` 固定 `"dynamic"`），Python 端据此做 `get_status` 归属 / `stop_execution` 越权校验。注意这是**账号级**标识，不是发指令的微信 userId——进程内所有 WeChat 账号共享同一个 `McpClient` 连接，`caller` 用来在多账号共享一个远程 autogame 时区分"谁在跑"。
+- **执行队列（迭代 Phase H，Python 端）**：Python 端 `ExecutorBridge` 用 FIFO 队列（默认容量 2，可配置）严格串行执行 `run_template`，不做真并发；同一 `caller` 同时只能有一个在途（排队中或执行中）请求，重复发起会收到 `{error, reason:"duplicate_caller"}`；队列已满收到 `{error, reason:"queue_full"}`；排队等待超过阈值（默认 300s）或执行超过阈值（默认 480s）会分别收到 `reason:"queue_wait_timeout"`/`reason:"execution_overdue"`——**执行超时不代表任务已停止**，Python 端会发送取消信号并在下一个安全检查点真正停止，此次 `run_template` 调用会先行返回错误，不会挂到 bot 端 600s 硬超时。详见 [wechat-ilink-autogame-xcx/doc/ROADMAP.md](../../../wechat-ilink-autogame-xcx/doc/ROADMAP.md) 的 Phase H。
 
 ## MCP 握手与调用协议
 
@@ -64,7 +66,8 @@ McpClient（mcp/）── JSON-RPC 2.0 over HTTP+SSE ──►  autogame-xcx MCP
 ```
 
 - 响应经 SSE 回流，按 JSON-RPC `id` 匹配 `pending` 的 `CompletableFuture`。
-- `await` 超时与 POST 失败均从 `pending` 移除（防泄漏，G6）；`pendingCount()` 暴露在途请求数（G4）。
+- `await` 超时与 POST 失败均从 `pending` 移除（防泄漏，G6）；`pendingCount()` 暴露在途请求数（G4），经 `/status` 系统命令可见。
+- **鉴权（迭代C）**：`authToken` 非空时，步骤 1 的 SSE GET 与步骤 3/4/5 的所有 POST 都带 `Authorization: Bearer <token>`；Python 端 `_BearerAuthMiddleware`（`wechat-ilink-autogame-xcx/src/autogame_xcx/mcp/server.py`）校验，不匹配返回 401。`authToken` 为空则双端都不校验（本地开发兼容，向后兼容旧行为）。
 
 ## 可靠性（详见 [reliability.md](reliability.md)）
 
@@ -84,15 +87,29 @@ McpClient（mcp/）── JSON-RPC 2.0 over HTTP+SSE ──►  autogame-xcx MCP
 | 字段 | 默认 | 说明 |
 |------|------|------|
 | `enabled` | `false` | 为 `true` 才构造 `McpClient` 并启动 `McpHealthMonitor`；否则 `ModeContext.mcpClient` 为 null，`!` 路由不生效 |
-| `mcpUrl` | `http://localhost:8765` | autogame-xcx MCP server 地址（Python GUI 默认端口） |
+| `mcpUrl` | `http://localhost:8765` | autogame-xcx MCP server 地址（Python GUI 默认端口，远程部署时指向实际 host:port） |
+| `authToken` | 空 | 迭代C 新增；非空时随 SSE/POST 请求带 `Authorization: Bearer <token>`，需与 Python 端 `data/mcp_server_config.json` 的 `auth_token` 一致 |
 
 `initMcpClient()`（`GameApplication`）加载配置；连接失败时 warn 并置空 `mcpClient`/`mcpToolRegistry`，`!` 指令降级为"未启用"。
 
+## Python 端配置（`data/mcp_server_config.json`，独立仓库 `wechat-ilink-autogame-xcx`）
+
+| 字段 | 默认 | 说明 |
+|------|------|------|
+| `host` | `127.0.0.1` | `McpServerThread` 绑定地址；仅本机需要保持默认，远程访问需改为非回环地址（如局域网 IP） |
+| `auth_token` | `null` | 非空时 `_BearerAuthMiddleware` 校验 `/sse`、`/messages` 两条路由；需与本仓库的 `authToken` 一致 |
+| `queue_capacity` | `2` | 迭代 Phase H 新增；`run_template` FIFO 队列容量上限（含正在执行的一项），超出拒绝新请求 |
+| `queue_wait_timeout_seconds` | `300` | 迭代 Phase H 新增；排队等待超过该时长会被摘除并报错（`<=0` 表示禁用） |
+| `execution_timeout_seconds` | `480` | 迭代 Phase H 新增；单次执行超过该时长会发送取消信号并提前返回错误（`<=0` 表示禁用） |
+
+由 `mcp/server_config.py` 的 `load()` 读取，缺省生成模板；`ui/main_window.py::_build_mcp_server()` 装配进 `ExecutorBridge`/`McpServerThread`。
+
 ## 接线
 
-- `GameApplication.initMcpClient()` → `McpClient` + `McpToolRegistry` + `McpHealthMonitor.start()`。
-- `BotInstance.create` 把 `mcpClient`/`mcpToolRegistry` 注入 `GameBot` → `ModeContext`（14 参）。
-- `GameBot` 构造器：`mcpClient != null` 才 `new AutogameMode()` 并注册到 `ModeRouter`（`!` 路由 + `switchableModes[AUTOGAME]`）。
+- `GameApplication.initMcpClient()` → `new McpClient(url, authToken)` + `McpToolRegistry` + `McpHealthMonitor.start()`。
+- `BotInstance.create`/`createDynamic` 把 `mcpClient`/`mcpToolRegistry` 注入 `GameBot` → `ModeContext`；同时把 `BotConfig.getName()`（`create`）或字面量 `"dynamic"`（`createDynamic`）作为 `botName` 传给 `GameBot`。
+- `GameBot` 构造器：`mcpClient != null` 才 `new AutogameMode(botName)` 并注册到 `ModeRouter`（`!` 路由 + `switchableModes[AUTOGAME]`）；`botName` 即协议里的 `caller`。
+- `/status`（`SystemCommandMode`）在 `ctx.mcpClient() != null` 时追加一行 MCP 连接状态 + `pendingCount()`（迭代C，与 `!status` 的 `get_status` 是两条独立路径，见上方"! 命令 → MCP tool 映射"）。
 
 ## 约束
 

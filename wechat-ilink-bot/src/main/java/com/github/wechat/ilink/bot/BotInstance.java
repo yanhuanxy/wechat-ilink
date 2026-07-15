@@ -230,7 +230,7 @@ public class BotInstance {
         final GameBot bot = new GameBot(engine, renderer, llmProvider, chatHistory, sessionManager,
                 streamingEnabled, typingIntervalMs, llmQueue, taskHandler, claudeBuild.mode, claudeRepo,
                 mcpClient, mcpToolRegistry, reliability, claudeAdminUsers(taskConfig), dedupRepo,
-                adminDefaultPrivileged(taskConfig));
+                adminDefaultPrivileged(taskConfig), config.getName());
 
         ILinkConfig.Builder configBuilder = ILinkConfig.builder()
                 .connectTimeoutMs(35000)
@@ -321,7 +321,7 @@ public class BotInstance {
         final GameBot bot = new GameBot(engine, renderer, llmProvider, chatHistory, sessionManager,
                 streamingEnabled, typingIntervalMs, llmQueue, taskHandler, claudeBuild.mode, claudeRepo,
                 mcpClient, mcpToolRegistry, reliability, claudeAdminUsers(taskConfig), dedupRepo,
-                adminDefaultPrivileged(taskConfig));
+                adminDefaultPrivileged(taskConfig), "dynamic");
 
         ILinkConfig clientConfig = ILinkConfig.builder()
                 .connectTimeoutMs(35000)
