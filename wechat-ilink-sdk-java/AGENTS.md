@@ -65,7 +65,8 @@ sdk/
 4. **异常走 `ILinkException` 层级**；IO 方法声明 `throws IOException`。
 5. **对外 API 兼容**：删除/改签名 public 方法前先确认 bot 与 iMoney 的调用点；能加不改，能废弃（@Deprecated）不删。
 6. **新代码须带 JUnit 5 测试**（依赖已就位；存量零测试是债，不是许可）。
-7. 提交消息前缀：`feat:` / `fix:` / `refactor:` / `test:` / `docs:`。
+7. **消费方自持接收循环；心跳只做 liveness**：`getUpdates()` 是长轮询，收消息由消费方在自己的循环里连续调用；心跳（`checkLiveness`）只按 `livenessThresholdMs` 判存活、**不得改回代收消息**（否则与消费方循环冗余双轮询，退回 3.x 前的卡点）。决策见 [docs/adr/0001](docs/adr/0001-no-reactive-incremental-dispatch-decoupling.md)。
+8. 提交消息前缀：`feat:` / `fix:` / `refactor:` / `test:` / `docs:`。
 
 ## 已知债（权威清单；不得扩大、不得效仿）
 
@@ -80,6 +81,7 @@ sdk/
 
 | 你要做什么 | 去哪里看 |
 |-----------|---------|
+| 查历史重大决策（为什么不上 Reactive / 接收循环演进） | [docs/adr/README.md](docs/adr/README.md) |
 | SDK 用法 / 快速开始 / 完整示例 | [README.md](README.md)（快速开始、消息发送、完整示例章节） |
 | 协议概念（contextToken/cursor/client_id/媒体类型/登录状态） | README「协议相关概念」「上下文机制说明」章节 |
 | 配置项含义与默认值 | `core/config/ILinkConfig` + `src/main/resources/ilink-sdk.properties` + README「配置说明」 |

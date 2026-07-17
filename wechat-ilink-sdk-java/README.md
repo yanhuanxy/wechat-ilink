@@ -177,6 +177,20 @@ for (WeixinMessage msg : messages) {
 }
 ```
 
+> ⚠️ **消费方必须自持接收循环。** `getUpdates()` 是一次**长轮询**（服务端 hold 住直到有消息或超时后返回），要持续收消息，需在你自己的循环里连续调用它——一次返回后立刻再调，失败则退避重试：
+>
+> ```java
+> while (running) {
+>     try {
+>         client.getUpdates();   // 长轮询，返回即再拉，保持近实时
+>     } catch (IOException e) {
+>         // 退避后重试（指数退避 + 上限）
+>     }
+> }
+> ```
+>
+> 拉取到的消息经 `OnMessageListener.onMessages(...)` 异步回调（在 SDK 的单线程 dispatch 派发，见下）。**SDK 的心跳不再代收消息**（自 3.x 起心跳只做 liveness 探测）——因此不跑上面这个循环的话，注册了 `OnMessageListener` 也收不到任何消息。设计依据见 `docs/adr/0001`。
+
 ---
 
 ## 💬 消息发送
@@ -496,16 +510,18 @@ new OnDisconnectListener() {
 
 ### 心跳监听器
 
+心跳是一个 **liveness 看门狗**（非消息轮询）：每 `heartbeatIntervalMs` 检查一次"距上次 `getUpdates()` 成功是否超过 `livenessThresholdMs`（默认 90s）"，超阈值回调 `onHeartbeatFailure`，否则 `onHeartbeatSuccess`。它依赖你的接收循环持续成功拉取来刷新存活时间戳。
+
 ```java
 new OnHeartbeatListener() {
     @Override
     public void onHeartbeatSuccess() {
-        // 心跳成功
+        // 距上次成功拉取在 livenessThresholdMs 内 —— 连接存活
     }
 
     @Override
     public void onHeartbeatFailure(Throwable throwable) {
-        // 心跳失败
+        // 超过 livenessThresholdMs 没有成功拉取 —— 疑似断连，可触发重登
     }
 };
 ```
