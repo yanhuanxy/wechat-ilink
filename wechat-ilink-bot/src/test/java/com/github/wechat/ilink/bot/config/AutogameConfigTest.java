@@ -45,7 +45,6 @@ class AutogameConfigTest {
         assertTrue(config.isEnabled());
         assertEquals("http://10.0.0.5:8765", config.getMcpUrl());
         assertEquals("secret-token", config.getAuthToken());
-        assertEquals("http://remote:9000", config.getMcpUrl());
     }
 
     @Test
