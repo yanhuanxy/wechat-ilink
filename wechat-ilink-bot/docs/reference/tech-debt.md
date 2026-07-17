@@ -35,6 +35,7 @@
 |----|------|------|
 | `GameApplication.shutdown()` | `mcpClient.close()` 被调两次（幂等无害，但不洁） | 去重 |
 | `McpToolRegistry` | 注释残留"未来加 scheduler"（已由 `McpHealthMonitor` 实现） | 清理注释 |
+| `data/*.json` 无字段级文档 | task-config/bots/reliability 等运行时配置的字段含义散落在各设计文档中，无集中说明 | 需要时补 `docs/reference/runtime-config.md` 集中收录 |
 
 ## SDK 升级记录（防腐层决策依据）
 
