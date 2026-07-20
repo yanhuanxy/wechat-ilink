@@ -26,6 +26,7 @@
 - `docs/examples/dashscope-upload.py`（由根目录的 `demo` 文件整理归档）。
 
 ### Changed
+- SDK 依赖坐标 groupId `io.github.lith0924` → `io.github.yanhuanxy`（SDK 3.0.0 发布 Maven Central，见 [../wechat-ilink-sdk-java/docs/adr/0002](../wechat-ilink-sdk-java/docs/adr/0002-publish-to-maven-central.md)；本地需对 SDK 新坐标 `mvn install`）。
 - `pom.xml`：JDK 基线 `1.8` → `17`（启用 Java 17 语法：var/record/sealed/text block 等）；`wechat-ilink-sdk` 由 `2.4.0-SNAPSHOT` 升至 `3.0.0`（JDK17 基线；`2.3.3` 作为 JDK8 收尾版本保留在 Maven Central）。
 - `pom.xml`：`wechat-ilink-sdk` 锁定到已发布版本 `2.3.3`（此前依赖未发布的 `2.4.0-SNAPSHOT`）。
 - `pom.xml`：新增 `maven-shade-plugin`（可运行 fat jar）与 `exec-maven-plugin`（`mvn exec:java`）。

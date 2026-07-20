@@ -26,7 +26,7 @@
 |------|------|------|
 | JDK | 17 | 可使用 Java 17 语法（var、record、sealed、text block、switch 表达式/模式匹配） |
 | Maven | 3.6.3 | 由 enforcer 强制 |
-| SDK | 3.0.0 | `io.github.lith0924:wechat-ilink-sdk` |
+| SDK | 3.0.0 | `io.github.yanhuanxy:wechat-ilink-sdk` |
 | 数据库 | SQLite 3.45.x + sqlite-jdbc 3.45.x | 嵌入式，零配置，ACID，WAL 模式 |
 | JSON | Jackson 2.x | 复杂数据类型序列化辅助（SDK 已自带） |
 | HTTP/SSE | okhttp + okhttp-eventsource | MCP 客户端（JSON-RPC over HTTP+SSE） |

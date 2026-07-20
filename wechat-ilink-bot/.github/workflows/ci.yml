@@ -20,7 +20,8 @@ jobs:
           java-version: '17'
           cache: maven
 
-      # SDK 3.0.0 已发布到 Maven Central，无需 SNAPSHOT。
+      # SDK 3.0.0 待发布 Maven Central（见 wechat-ilink-sdk-java/docs/adr/0002），
+      # 当前依赖本地 .m2 install；发布前 CI 需补预装步骤或私服。
       # Live 集成测试（DashScope / Anthropic / 真实 MCP）由 @EnabledIfEnvironmentVariable 守卫，CI 默认跳过。
       - name: Build and test (mvn verify)
         run: mvn -B clean verify

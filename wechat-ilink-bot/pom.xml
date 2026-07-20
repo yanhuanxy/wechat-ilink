@@ -24,7 +24,7 @@
     <dependencies>
         <!-- SDK -->
         <dependency>
-            <groupId>io.github.lith0924</groupId>
+            <groupId>io.github.yanhuanxy</groupId>
             <artifactId>wechat-ilink-sdk</artifactId>
             <version>${sdk.version}</version>
         </dependency>
