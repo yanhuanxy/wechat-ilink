@@ -3,9 +3,37 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>io.github.lith0924</groupId>
+    <groupId>io.github.yanhuanxy</groupId>
     <artifactId>wechat-ilink-sdk</artifactId>
     <version>3.0.0</version>
+    <packaging>jar</packaging>
+
+    <name>wechat-ilink-sdk</name>
+    <description>微信 iLink Bot 协议的 Java SDK：扫码登录、长轮询收发消息、媒体 CDN 加密、重启恢复</description>
+    <url>https://github.com/yanhuanxy/wechat-ilink-pokem</url>
+
+    <licenses>
+        <license>
+            <name>MIT License</name>
+            <url>https://www.opensource.org/licenses/mit-license.php</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+    <developers>
+        <developer>
+            <id>yanhuanxy</id>
+            <name>yanhuanxy</name>
+            <email>yanhuanxy@163.com</email>
+            <url>https://github.com/yanhuanxy</url>
+        </developer>
+    </developers>
+
+    <scm>
+        <connection>scm:git:git://github.com/yanhuanxy/wechat-ilink-pokem.git</connection>
+        <developerConnection>scm:git:ssh://github.com/yanhuanxy/wechat-ilink-pokem.git</developerConnection>
+        <url>https://github.com/yanhuanxy/wechat-ilink-pokem</url>
+    </scm>
 
     <properties>
         <maven.compiler.release>17</maven.compiler.release>
@@ -50,7 +78,75 @@
 
     <build>
         <plugins>
+            <!-- Central 强制：源码 jar -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-source-plugin</artifactId>
+                <version>3.3.1</version>
+                <executions>
+                    <execution>
+                        <id>attach-sources</id>
+                        <goals>
+                            <goal>jar-no-fork</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <!-- Central 强制：javadoc jar（无 Javadoc 注释也不阻断） -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+                <version>3.10.1</version>
+                <configuration>
+                    <doclint>none</doclint>
+                    <failOnError>false</failOnError>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>attach-javadocs</id>
+                        <goals>
+                            <goal>jar</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <!-- 发布到 Maven Central Portal：mvn -P release clean deploy
+             credentials（central token / GPG passphrase）放 ~/.m2/settings.xml，见 docs/adr/0002 -->
+        <profile>
+            <id>release</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-gpg-plugin</artifactId>
+                        <version>3.2.5</version>
+                        <executions>
+                            <execution>
+                                <id>sign-artifacts</id>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>sign</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.sonatype.central</groupId>
+                        <artifactId>central-publishing-maven-plugin</artifactId>
+                        <version>0.6.0</version>
+                        <extensions>true</extensions>
+                        <configuration>
+                            <publishingServerId>central</publishingServerId>
+                            <tokenAuth>true</tokenAuth>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 
 </project>

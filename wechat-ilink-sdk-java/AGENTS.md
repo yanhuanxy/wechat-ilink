@@ -4,7 +4,7 @@
 
 ## 项目概述
 
-**wechat-ilink-sdk-java**（`io.github.lith0924:wechat-ilink-sdk:3.0.0`）—— 封装微信 iLink Bot 协议的 Java SDK：扫码登录、getupdates 长轮询收消息、发送文本/图/文件/语音/视频、媒体 CDN 加密上传下载、重启恢复（ResumeContext）。
+**wechat-ilink-sdk-java**（`io.github.yanhuanxy:wechat-ilink-sdk:3.0.0`）—— 封装微信 iLink Bot 协议的 Java SDK：扫码登录、getupdates 长轮询收消息、发送文本/图/文件/语音/视频、媒体 CDN 加密上传下载、重启恢复（ResumeContext）。
 
 消费方：[wechat-ilink-bot](../wechat-ilink-bot)（同工作区，经 Maven 依赖而非源码引用）、iMoney（[wechat-ilink-imoney](../wechat-ilink-imoney)）。**这是开源主战场**——对外 API 破坏性变更须极其谨慎。
 

@@ -11,3 +11,4 @@
 | 编号 | 决策 | 状态 |
 |------|------|------|
 | [0001](0001-no-reactive-incremental-dispatch-decoupling.md) | 驳回 Reactive(Flux) 改造，采用增量式「分发解耦 + 自持接收循环」 | 🟢 生效（P0/P1/P3 落地，P2 撤销） |
+| [0002](0002-publish-to-maven-central.md) | 发布 wechat-ilink-sdk 到 Maven Central（平台路线 + bot 开源前置） | 🟡 已决策、执行中 |
